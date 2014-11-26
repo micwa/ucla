@@ -8,9 +8,7 @@ class Parser:
     Class that allows users to parse the course catalog. All methods are
     class methods; there is no need to instantiate any Parser objects.
     """
-    # Group 1 = dept name (all capitals); assume that a newline follows the name
-    DEPT_REGEX = r"((?:[A-Z-/]+(?:\s+|$))+)$"
-    
+    # Matches one course single course (one line)
     COURSE_REGEX = (r"(?P<number>\w+\b)\s+"              # Catalog number
                     r"(?P<name>.+)(Y|N)\s+(Y|N)?\s*"     # Class name; must trim trailing whitespace
                     r"((?P<dashes>-+)|"                  # Dashes, if no id
@@ -43,54 +41,90 @@ class Parser:
                         r"(?P<xc>[0-9]+)\s+"
                         r"(?P<grade_type>[a-zA-Z]+)\s+"
                         r"(?P<units>[0-9])\.")
-
-    SAME_AS_REGEX = r"(?P<same_as>SAME AS:.+)"
-    RESTRICT_REGEX = r"(?P<restrict>RESTRICT:.+)"
+    
+    # List of all departments, in the order they will be encountered
+    # in the listings (for UCLA, it's alphabetical).
+    depts = []
     
     def __init__(self):
         raise RuntimeError("What do you think you're doing?")
 
     @staticmethod
-    def parse_single_course(listing):
-        r = re.match(Parser.COURSE_REGEX, listing)
+    def load_depts(filename):
+        """
+        Loads the department names from the file with the given filename. Expects
+        each line in the file to be a single department name.
+        Note that parse_catalog assumes that the department name in the data file
+        is *exactly* the same as in the department file (i.e. case sensitive, though
+        whitespace is stripped).
+        """
+        file = open(filename)
+        lines = file.readlines()
+        for ln in lines:
+            Parser.depts.append(ln.strip())
+
+        file.close()
+
+    @staticmethod
+    def parse_single_course(line):
+        r = re.match(Parser.COURSE_REGEX, line)
         print r.groups()
 
     @staticmethod
-    def parse_single_subcourse(listing):
-        r = re.match(Parser.SUB_COURSE_REGEX, listing)
+    def parse_single_subcourse(line):
+        r = re.match(Parser.SUB_COURSE_REGEX, line)
         print r.groups()
 
     @staticmethod
     def parse_catalog(filename):
         """
         Parses the course listings in the given file (represented by the filename)
-        and returns a list of all the classes.
+        and returns a list of all the classes. The user must call Parser.load_depts()
+        with the proper department names or else this raises an error.
         """
+        if Parser.depts == []:
+            raise RuntimeError("List of departments is empty.")
+            
         file = open(filename)
-        line = file.readline()
+        line = file.readline().strip()
         lines = []
+        Parser.depts.append("\x00\x01\x02")  # So depts[i+1] doesn't raise an error
+        n = len(Parser.depts) - 1            # "Real" length of depts
+        i = 0
 
         # Set up first department match
-        while not re.match(Parser.DEPT_REGEX, line) and line != "":
-            line = file.readline()
+        # Look ahead only one department if the current department does not exist
+        while (i < n and line != "" and line != Parser.depts[i] and
+                         line != Parser.depts[i+1]):
+            line = file.readline().strip()
 
-        while line != "":
-            r = re.match(Parser.DEPT_REGEX, line)
-            dept = r.group(0).strip()        # Current department
-            print "\n-----" + dept + "-----"
+        # Account for look-ahead
+        if i + 1 < n and line == Parser.depts[i+1]:
+            print "Skipped over:", Parser.depts[i]
+            i += 1
+
+        while i < n and line != "":
+            print "\n-----" + Parser.depts[i] + "-----"
 
             # Get all lines before next department name
             line = file.readline()
-            while line != "" and (not re.match(Parser.DEPT_REGEX, line) or \
-                  "CATALOG" in line or "STUDENT" in line or "MAJORS" in line or \
-                  "MINORS" in line or "SENIOR" in line or "JUNIOR" in line or \
-                  len(line) > 50):
+            i += 1
+            while (i < n and line != "" and line != Parser.depts[i] and
+                         line != Parser.depts[i+1]):
                 lines.append(line)
-                line = file.readline()
+                line = file.readline().strip()
 
+            if i + 1 < n and line == Parser.depts[i+1]:
+                print "Skipped over:", Parser.depts[i]
+                i += 1
+                
             # Parse all lines in department
-            Parser.parse_dept(dept, lines)
+            Parser.parse_dept(Parser.depts[i], lines)
             lines = []
+
+        print Parser.depts[i]
+        Parser.depts.pop()
+        file.close()
             
     @staticmethod
     def parse_dept(dept, lines):
@@ -113,7 +147,7 @@ class Parser:
             prof = r.group("prof")
             capac = r.group("capac")
             
-            if 1==1: # time_start == "10:00" and stoi(number) < 100:
+            if 1 == 2: # time_start == "10:00" and stoi(number) < 100:
                 print number, "|", name, "|", time_start + "-" + time_end, "|", \
                       days, "|", prof, "|", capac
 
@@ -125,7 +159,7 @@ class Parser:
                     time_start = r.group("time_start")
                     time_end = r.group("time_end")
                     prof = r.group("prof")
-                    if 1 == 1: # time_start == "10:00" and stoi(number) < 100:
+                    if 1 == 2: # time_start == "10:00" and stoi(number) < 100:
                         print "   " + number, "|", name, "|", time_start + "-" + time_end, "|", \
                               days, "|", prof, "|", capac
 
