@@ -1,28 +1,40 @@
 import re
-import misc
+import util
 
 class TimeInterval(object):
     """A time interval, consisting of a start time and an end time."""
     
-    def __init__(self, start, end):
+    def __init__(self, start, end, align = True):
         """
         Arguments:
 
         start - a Time object or string to be used to construct a Time object
                 representing the start of the time interval
         end - a Time object or string representing the end of the time interval
+        align - whether str(self) will return an aligned version of the interval,
+                e.g. " 7:00- 8:00" will align vertically with "10:00-14:50"
         """
         if isinstance(start, Time) and isinstance(end, Time):
             self.start = start
             self.end = end
+            self.align = align
         elif isinstance(start, str) and isinstance(end, str):
             self.start = Time(start)
             self.end = Time(end)
+            self.align = align
         else:
-            raise ValueError("Invalid time format")
+            raise TypeError("Invalid types (must be a pair of strings or Times")
 
     def __str__(self):
-        return str(self.start) + "-" + str(self.end)
+        """
+        Concatenates str(self.start), "-", and str(self.end). Note that if
+        any Time's hours < 10, there will be a space before that time,
+        unless self.align is set to False.
+        """
+        if self.align:
+            return str(self.start) + "-" + str(self.end)
+        else:
+            return str(self.start).strip() + "-" + str(self.end).strip()
 
     def contains(self, time):
         """
@@ -52,7 +64,7 @@ class Time(object):
     # Group 1 = hours, group 2 = minutes, group 3 = a, p, or None
     TIME_REGEX = r"([0-9]{1,2})\s*:\s*([0-9]{2})(?:\s*(a|A|p|P)|\b)"
 
-    TIME_FSTR = "{0:d}:{1:02d}"
+    TIME_FSTR = "{0:>2d}:{1:02d}"
     MINS_PER_DAY = 1440
 
     def __init__(self, time):
@@ -73,7 +85,7 @@ class Time(object):
             if r.group(3) != None and "p" in r.group(3).lower():
                 pm = 1
                     
-            if misc.isint(hours) and misc.isint(mins):       
+            if util.isint(hours) and util.isint(mins):       
                 self.hours = int(hours) % 24 + int(mins) / 60 + 12 * pm
                 self.mins = int(mins) % 60
             else:
@@ -82,35 +94,35 @@ class Time(object):
             raise ValueError("Invalid time format")
 
     def __eq__(self, other):
-        """Returns true if the two times are equal."""
+        """Returns true if the two times are equal, and false otherwise."""
         if (self.hours * 60 + self.mins) == (other.hours * 60 + other.mins):
             return True
         else:
             return False
 
     def __ge__(self, other):
-        """Returns true if self is after or the same time as other."""
+        """Returns true if self is after or the same time as other, and false otherwise."""
         if (self.hours * 60 + self.mins) >= (other.hours * 60 + other.mins):
             return True
         else:
             return False
 
     def __gt__(self, other):
-        """Returns true if self is after other."""
+        """Returns true if self is after other, and false otherwise."""
         if (self.hours * 60 + self.mins) > (other.hours * 60 + other.mins):
             return True
         else:
             return False
     
     def __le__(self, other):
-        """Returns true if self is before or the same time as other."""
+        """Returns true if self is before or the same time as other, and false otherwise."""
         if (self.hours * 60 + self.mins) <= (other.hours * 60 + other.mins):
             return True
         else:
             return False
     
     def __lt__(self, other):
-        """Returns true if self is before other."""
+        """Returns true if self is before other, and false otherwise."""
         if (self.hours * 60 + self.mins) < (other.hours * 60 + other.mins):
             return True
         else:
@@ -129,4 +141,5 @@ class Time(object):
             return Time.MINS_PER_DAY - mins2 + mins1
 
     def __str__(self):
+        """Returns the time hh:mm; the hours are padded with one space if h < 10."""
         return Time.TIME_FSTR.format(self.hours, self.mins)
