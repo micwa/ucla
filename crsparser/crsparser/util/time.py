@@ -1,5 +1,5 @@
 import re
-import util
+import utils
 
 class TimeInterval(object):
     """A time interval, consisting of a start time and an end time."""
@@ -85,7 +85,7 @@ class Time(object):
             if r.group(3) != None and "p" in r.group(3).lower():
                 pm = 1
                     
-            if util.isint(hours) and util.isint(mins):       
+            if utils.isint(hours) and utils.isint(mins):       
                 self.hours = int(hours) % 24 + int(mins) / 60 + 12 * pm
                 self.mins = int(mins) % 60
             else:

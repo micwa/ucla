@@ -15,7 +15,11 @@ def stoi(s):
     Converts a string to an int by ignoring all nondigit characters and all
     characters after periods (truncates floats).
     """
-    s2 = ""
+    if s[0] == "-":
+        s2 = "-"
+    else:
+        s2 = ""
+        
     for c in s:
         if c.isdigit():
             s2 += c

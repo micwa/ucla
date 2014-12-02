@@ -1,6 +1,5 @@
 import re
 from course import Department, Course, Lecture, Discussion
-from util import util
 from util.time import Time, TimeInterval
 
 class Parser:
