@@ -1,7 +1,7 @@
 import re
-import course
+from course import Department, Course, Lecture, Discussion
+from util import util
 from util.time import Time, TimeInterval
-from util.misc import stoi
 
 class Parser:
     """
@@ -44,13 +44,13 @@ class Parser:
     
     # List of all departments, in the order they will be encountered
     # in the listings (for UCLA, it's alphabetical).
-    depts = []
+    dept_list = []
     
     def __init__(self):
         raise RuntimeError("What do you think you're doing?")
 
     @staticmethod
-    def load_depts(filename):
+    def load_dept_list(filename):
         """
         Loads the department names from the file with the given filename. Expects
         each line in the file to be a single department name.
@@ -61,7 +61,7 @@ class Parser:
         file = open(filename)
         lines = file.readlines()
         for ln in lines:
-            Parser.depts.append(ln.strip())
+            Parser.dept_list.append(ln.strip())
 
         file.close()
 
@@ -79,55 +79,115 @@ class Parser:
     def parse_catalog(filename):
         """
         Parses the course listings in the given file (represented by the filename)
-        and returns a list of all the classes. The user must call Parser.load_depts()
-        with the proper department names or else this raises an error.
+        and returns a list of all the departments, which each contain a list of
+        classes. The user must call Parser.load_dept_list() with the proper
+        department names or else this function raises an error.
         """
-        if Parser.depts == []:
+        if Parser.dept_list == []:
             raise RuntimeError("List of departments is empty.")
             
         file = open(filename)
+        depts = []
+        
+        # Temp variables
         line = file.readline().strip()
         lines = []
-        Parser.depts.append("\x00\x01\x02")  # So depts[i+1] doesn't raise an error
-        n = len(Parser.depts) - 1            # "Real" length of depts
+        Parser.dept_list.append("\x00\x01\x02")  # So dept_list[i+1] doesn't raise an error
+        Parser.dept_list.append("\x00\x01\x02")
+        n = len(Parser.dept_list) - 2            # "Real" length of dept_list
         i = 0
 
         # Set up first department match
         # Look ahead only one department if the current department does not exist
-        while (i < n and line != "" and line != Parser.depts[i] and
-                         line != Parser.depts[i+1]):
+        while (i < n and line != "" and line != Parser.dept_list[i] and
+                         line != Parser.dept_list[i+1]):
             line = file.readline().strip()
 
         # Account for look-ahead
-        if i + 1 < n and line == Parser.depts[i+1]:
-            print "Skipped over:", Parser.depts[i]
+        if i + 1 < n and line == Parser.dept_list[i+1]:
+            print "Skipped over:", Parser.dept_list[i]
             i += 1
 
         while i < n and line != "":
-            print "\n-----" + Parser.depts[i] + "-----"
-
             # Get all lines before next department name
             line = file.readline()
             i += 1
-            while (i < n and line != "" and line != Parser.depts[i] and
-                         line != Parser.depts[i+1]):
+            if i > n:
+                break
+            
+            while (line != "" and line != Parser.dept_list[i] and
+                   line != Parser.dept_list[i+1]):
                 lines.append(line)
                 line = file.readline().strip()
 
-            if i + 1 < n and line == Parser.depts[i+1]:
-                print "Skipped over:", Parser.depts[i]
+            if i + 1 < n and line == Parser.dept_list[i+1]:
+                print "Skipped over:", Parser.dept_list[i]
                 i += 1
                 
             # Parse all lines in department
-            Parser.parse_dept(Parser.depts[i], lines)
+            d = Parser.parse_dept(Parser.dept_list[i - 1], lines)
+            depts.append(d)
             lines = []
 
-        print Parser.depts[i]
-        Parser.depts.pop()
+        Parser.dept_list.pop()
+        Parser.dept_list.pop()
         file.close()
+        
+        return depts
+
+    @staticmethod
+    def parse_course(lines):
+        lec_list = []
+        disc_list = []                      # Temporary variable
+
+        # First lecture
+        r = re.match(Parser.COURSE_REGEX, lines[0])
+        name = r.group("name")
+        number = r.group("number")
+
+        sec_num = r.group("sec_num")
+        days = r.group("days")
+        time_start = r.group("time_start")
+        time_end = r.group("time_end")
+        loc = r.group("loc")
+        prof = r.group("prof")
+        capac = r.group("capac")
+        xc = r.group("xc")
+        grade_type = r.group("grade_type")
+        units = r.group("units")
+        
+        lec = Lecture(sec_num, days, prof, TimeInterval(time_start, time_end),
+                      capac, disc_list)
+        lec_list.append(lec)
+
+        # Rest of lines
+        for ln in lines:
+            r = re.match(Parser.SUB_COURSE_REGEX, ln)
+            if r is not None:
+                sec_num = r.group("sec_num")
+                days = r.group("days")
+                time_start = r.group("time_start")
+                time_end = r.group("time_end")
+                loc = r.group("loc")
+                prof = r.group("prof")
+                capac = r.group("capac")
+                xc = r.group("xc")
+                grade_type = r.group("grade_type")
+                units = r.group("units")
+                
+                lec = Lecture(sec_num, days, prof, TimeInterval(time_start, time_end),
+                              capac, disc_list)
+                lec_list.append(lec)
+        
+        return Course(name, number, lec_list, blah="blah")
             
     @staticmethod
     def parse_dept(dept, lines):
+        print "\n-----" + dept + "-----"
+        courses = []
+
+        # Temp variables
+        lns = []
         i = 0
 
         # Set up first class match
@@ -136,31 +196,16 @@ class Parser:
         
         while i < len(lines):
             r = re.match(Parser.COURSE_REGEX, lines[i])
+            lns.append(lines[i])
             i += 1
-            
-            # Extract class properties to pass to parse_class()
-            name = r.group("name")
-            time_start = r.group("time_start")
-            time_end = r.group("time_end")
-            number = r.group("number")
-            days = r.group("days")
-            prof = r.group("prof")
-            capac = r.group("capac")
-            
-            if 1 == 2: # time_start == "10:00" and stoi(number) < 100:
-                print number, "|", name, "|", time_start + "-" + time_end, "|", \
-                      days, "|", prof, "|", capac
 
             # Get all lectures in class (loop until next course match)
             while i < len(lines) and not re.match(Parser.COURSE_REGEX, lines[i]):
-                r = re.match(Parser.SUB_COURSE_REGEX, lines[i])
-
-                if r is not None:
-                    time_start = r.group("time_start")
-                    time_end = r.group("time_end")
-                    prof = r.group("prof")
-                    if 1 == 2: # time_start == "10:00" and stoi(number) < 100:
-                        print "   " + number, "|", name, "|", time_start + "-" + time_end, "|", \
-                              days, "|", prof, "|", capac
-
+                lns.append(lines[i])
                 i += 1
+
+            c = Parser.parse_course(lns)
+            courses.append(c)
+            lns = []
+
+        return Department(dept, courses)
