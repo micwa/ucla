@@ -1,64 +1,82 @@
 """
 Provides the capability to filter Courses from a Catalog (i.e. select courses
 with certain criteria). To assist with filtering, this module contains
-functions that return functions f: Course, *args -> bool that wrap functions
-in Course (because filter() expects that type of function).
+functions that return functions f: Course -> bool that wrap functions
+in Course (because filter() expects functions with only one argument).
 """
 
-def filter(courses, *args):
+def filter(courses, fn_list):
     """
+    Returns a list of booleans indicating whether the corresponding course
+    in courses meets the criteria specified in args.
+    
     Arguments:
     
     courses - list of courses to filter
-    *fns - list of tuples, where the first element is a function 
-           f: Course, *args -> bool and the other elements are its arguments
+    fn_list - list of functions f: Course -> bool
     """
-    for crs in courses:
-        for tup in args:
-            if not tup[0](cl, list(t[1:])):
-                # Mark course as uninteresting, then proceed to process next course
+    bools = [True] * len(courses)
+    for i in xrange(len(courses)):
+        for fn in fn_list:
+            if not fn(courses[i]):
+                # Deselect course, then proceed to process next course
+                bools[i] = False
                 break
-    # Do something with (display) the courses remaining
+    return bools
 
 def duration_eq(n):
     """
     Returns a function that returns true if the Course's duration is exactly
     equal to n.
     """
-    return lambda crs, *args: crs.duration() == n
+    return lambda crs: crs.duration() == n
 
-def duration_ge(n, *args):
+def duration_ge(n):
     """
     Returns a function that returns true if the Course's duration is greater
     than or equal to n.
     """
-    return lambda crs, *args: crs.duration() >= n
+    return lambda crs: crs.duration() >= n
 
-def duration_le(n, *args):
+def duration_le(n):
     """
     Returns a function that returns true if the Course's duration is less
     than or equal to n.
     """
-    return lambda crs, *args: crs.duration() <= n
+    return lambda crs: crs.duration() <= n
 
 def islab():
     """Returns a function that returns true if the Course is a lab."""
-    return lambda crs, *args: crs.islab()
+    return lambda crs: crs.islab()
     
-def islab():
+def isupperdiv():
     """Returns a function that returns true if the Course is an upper division course."""
-    return lambda crs, *args: crs.isupperdiv()
+    return lambda crs: crs.isupperdiv()
+    
+def occurs_after(time):
+    """
+    Returns a function that returns true if the Course starts at or after
+    the given time (Time object).
+    """
+    return lambda crs: crs.occurs_after(time)
+
+def occurs_before(time):
+    """
+    Returns a function that returns true if the Course ends at or before
+    the given time (Time object).
+    """
+    return lambda crs: crs.occurs_before(time)
 
 def starts_at(time):
     """
     Returns a function that returns true if the Course has a Lecture that
     starts at the specified time (Time object).
     """
-    return lambda crs, *args: crs.starts_at(args[0])
+    return lambda crs: crs.starts_at(time)
 
 def ends_at(time):
     """
     Returns a function that returns true if the Course has a Lecture that
     ends at the specified time (Time object).
     """
-    return lambda crs, *args: crs.ends_at(args[0])
+    return lambda crs: crs.ends_at(time)
