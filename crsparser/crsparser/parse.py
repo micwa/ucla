@@ -1,5 +1,6 @@
 import re
 from course import Department, Course, Lecture, Discussion
+import util.utils as utils
 from util.time import Time, TimeInterval
 
 class Parser:
@@ -159,6 +160,10 @@ class Parser:
                 info_dict[Lecture.INFO_KEYS[2]] = grade_type;
                 info_dict[Lecture.INFO_KEYS[3]] = units;
                 
+                h = utils.stoi(time_start)  # Since time_start does not have a suffix, add one if in afternoon
+                if h / 100 < 8:
+                    time_start += "p"
+                
                 lec = Lecture(sec_num, days, prof, TimeInterval(time_start, time_end),
                               info_dict, disc_list)
                 lec_list.append(lec)
@@ -167,7 +172,6 @@ class Parser:
             
     @staticmethod
     def parse_dept(dept, lines):
-        print "\n-----" + dept + "-----"
         courses = []
 
         # Temp variables
