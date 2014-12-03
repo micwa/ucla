@@ -1,4 +1,5 @@
 import re
+import util.utils as utils
 
 class Department(object):
     """A department with a name and a list of courses."""
@@ -46,17 +47,17 @@ class Course(object):
         
     def islab(self):
         """
-        Returns true if this course is a lab (has an "L" in its name), and
+        Returns true if this course is a lab (has an "L" in its number), and
         false if otherwise.
         """
-        return "l" in self.name.lower()
+        return "l" in self.number.lower()
         
     def isupperdiv(self):
         """
         Returns true if this course is an upper division course, and false
         if otherwise.
         """
-        return util.stoi(self.number) >= 100
+        return utils.stoi(self.number) >= 100
     
     def occurs_after(self, time):
         """

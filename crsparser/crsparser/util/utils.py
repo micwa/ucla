@@ -2,12 +2,22 @@
 Miscellaneous utility functions for error-checking and conversion.
 """
 
+from .time import Time
+
 def isint(n):
     """Returns true if n can be casted to an int."""
     try:
         int(n)
         return True
     except ValueError:
+        return False
+
+def istime(time):
+    """Returns true if Time(time) does not raise an exception."""
+    try:
+        Time(time)
+        return True
+    except:
         return False
 
 def stoi(s):
