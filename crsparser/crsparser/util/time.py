@@ -82,11 +82,14 @@ class Time(object):
             hours = r.group(1)
             mins = r.group(2)
             pm = 0                  # Convert from pm to 24 hour time
-            if r.group(3) != None and "p" in r.group(3).lower():
-                pm = 1
+            if r.group(3) != None:
+                if "p" in r.group(3).lower() and hours != "12":
+                    pm = 1
+                if "a" in r.group(3).lower() and hours == "12":
+                    hours = 0
                     
             if utils.isint(hours) and utils.isint(mins):       
-                self.hours = int(hours) % 24 + int(mins) / 60 + 12 * pm
+                self.hours = (int(hours) + int(mins) / 60 + 12 * pm) % 24
                 self.mins = int(mins) % 60
             else:
                 raise ValueError("Invalid time format")
