@@ -7,39 +7,30 @@ class Parser:
     Class that allows users to parse the course catalog. All methods are
     class methods; there is no need to instantiate any Parser objects.
     """
-    # Matches one course single course (one line)
-    COURSE_REGEX = (r"(?P<number>\w+\b)\s+"              # Catalog number
-                    r"(?P<name>.+)(Y|N)\s+(Y|N)?\s*"     # Class name; must trim trailing whitespace
-                    r"((?P<dashes>-+)|"                  # Dashes, if no id
-                    r"(?P<lec_id>[0-9]{3}-[0-9]{3}-[0-9]{3}))\s+"    # ID to enroll
-                    r"(?P<class_type>\w+)\s+"            # Class type, e.g. LEC or SEM
-                    r"(?P<sec_num>[0-9][a-zA-Z]?)\s+"    # Section number
-                    r"(?P<days>\w+)\s+"                  # Days held
-                    r"(?P<time_start>" + Time.TIME_REGEX + ")\s*-\s*"   # Time start
-                    r"(?P<time_end>" + Time.TIME_REGEX + ")\s+"      # Time end
-                    r"(?P<loc>[^0-9]+[0-9]+[a-zA-z]*)\s+"    # Location (depends on number at end)
-                    r"(?P<prof>[^0-9]*)\s+"              # Professor name
-                    r"(?P<capac>[0-9]+)\s+"              # Enrollment capacity
-                    r"(?P<xc>[0-9]+)\s+"                 # Exam code
-                    r"(?P<grade_type>[a-zA-Z]+)\s+"      # Grade type
-                    r"(?P<units>[0-9])\.")               # Number of units (< 10)
+    # Matches course title (e.g. 100 COURSE TITLE Y)
+    COURSE_TITLE_REGEX = \
+            (r"(?P<number>\w+\b)\s+"         # Catalog number
+             r"(?P<name>.+)\s+(Y|N)\s+")     # Class name; must trim trailing whitespace
 
-    # Same as COURSE_REGEX, except for lectures in the same class after
-    # the first one; starts at "Y?".
-    SUB_COURSE_REGEX = ("(Y|N)?\s*"
-                        r"((?P<dashes>-+)|"
-                        r"(?P<lec_id>[0-9]{3}-[0-9]{3}-[0-9]{3}))\s+"
-                        r"(?P<class_type>\w+)\s+"
-                        r"(?P<sec_num>[0-9][a-zA-Z]?)\s+"
-                        r"(?P<days>\w+)\s+"
-                        r"(?P<time_start>" + Time.TIME_REGEX + ")\s*-\s*"
-                        r"(?P<time_end>" + Time.TIME_REGEX + ")\s+"
-                        r"(?P<loc>[^0-9]+[0-9]+[a-zA-z]*)\s+"
-                        r"(?P<prof>[^0-9]*)\s+"
-                        r"(?P<capac>[0-9]+)\s+"
-                        r"(?P<xc>[0-9]+)\s+"
-                        r"(?P<grade_type>[a-zA-Z]+)\s+"
-                        r"(?P<units>[0-9])\.")
+    # Matches a lecture, starting optionally with a Y/N
+    COURSE_LEC_REGEX = \
+            (r"(Y|N)?\s*"
+             r"((?P<dashes>-+)|"
+             r"(?P<lec_id>[0-9]{3}-[0-9]{3}-[0-9]{3}))\s+"
+             r"(?P<class_type>\w+)\s+"            # Class type, e.g. LEC or SEM
+             r"(?P<sec_num>[0-9][a-zA-Z]?)\s+"    # Section number
+             r"(?P<days>\w+)\s+"                  # Days held
+             r"(?P<time_start>" + Time.TIME_REGEX + ")\s*-\s*"   # Time start
+             r"(?P<time_end>" + Time.TIME_REGEX + ")\s+"         # Time end
+             r"(?P<loc>[^0-9]+[0-9]+[a-zA-z]*)?\s*"   # Optional: Location (depends on number at end)
+             r"(?P<prof>[^0-9]*)?\s*"                 # Optional: Professor name
+             r"(?P<capac>[0-9]+)\s+"              # Enrollment capacity
+             r"(?P<xc>[0-9]+)\s+"                 # Exam code
+             r"(?P<grade_type>[a-zA-Z]+)\s+"      # Grade type
+             r"(?P<units>[0-9])\.")               # Number of units (< 10)
+
+    # Full line
+    COURSE_ALL_REGEX = COURSE_TITLE_REGEX + COURSE_LEC_REGEX
     
     # List of all departments, in the order they will be encountered
     # in the listings (for UCLA, it's alphabetical).
@@ -66,12 +57,12 @@ class Parser:
 
     @staticmethod
     def parse_single_course(line):
-        r = re.match(Parser.COURSE_REGEX, line)
+        r = re.match(Parser.COURSE_ALL_REGEX, line)
         print r.groups()
 
     @staticmethod
     def parse_single_subcourse(line):
-        r = re.match(Parser.SUB_COURSE_REGEX, line)
+        r = re.match(Parser.COURSE_LEC_REGEX, line)
         print r.groups()
 
     @staticmethod
@@ -137,48 +128,42 @@ class Parser:
     @staticmethod
     def parse_course(lines):
         lec_list = []
-        disc_list = []                      # Temporary variable
+        
+        # Temporary variables
+        disc_list = []
+        info_dict = {}
 
         # First lecture
-        r = re.match(Parser.COURSE_REGEX, lines[0])
-        name = r.group("name")
+        r = re.match(Parser.COURSE_TITLE_REGEX, lines[0])
+        name = r.group("name").strip()
         number = r.group("number")
 
-        sec_num = r.group("sec_num")
-        days = r.group("days")
-        time_start = r.group("time_start")
-        time_end = r.group("time_end")
-        loc = r.group("loc")
-        prof = r.group("prof")
-        capac = r.group("capac")
-        xc = r.group("xc")
-        grade_type = r.group("grade_type")
-        units = r.group("units")
-        
-        lec = Lecture(sec_num, days, prof, TimeInterval(time_start, time_end),
-                      capac, disc_list)
-        lec_list.append(lec)
-
-        # Rest of lines
+        # Rest of lectures
         for ln in lines:
-            r = re.match(Parser.SUB_COURSE_REGEX, ln)
+            r = re.search(Parser.COURSE_LEC_REGEX, ln)
             if r is not None:
+                # Same as above
                 sec_num = r.group("sec_num")
                 days = r.group("days")
                 time_start = r.group("time_start")
                 time_end = r.group("time_end")
                 loc = r.group("loc")
-                prof = r.group("prof")
+                prof = r.group("prof").strip()
+                
                 capac = r.group("capac")
                 xc = r.group("xc")
                 grade_type = r.group("grade_type")
                 units = r.group("units")
+                info_dict[Lecture.INFO_KEYS[0]] = capac;
+                info_dict[Lecture.INFO_KEYS[1]] = xc;
+                info_dict[Lecture.INFO_KEYS[2]] = grade_type;
+                info_dict[Lecture.INFO_KEYS[3]] = units;
                 
                 lec = Lecture(sec_num, days, prof, TimeInterval(time_start, time_end),
-                              capac, disc_list)
+                              info_dict, disc_list)
                 lec_list.append(lec)
         
-        return Course(name, number, lec_list, blah="blah")
+        return Course(name, number, lec_list)
             
     @staticmethod
     def parse_dept(dept, lines):
@@ -190,16 +175,16 @@ class Parser:
         i = 0
 
         # Set up first class match
-        while i < len(lines) and not re.match(Parser.COURSE_REGEX, lines[i]):
+        while i < len(lines) and not re.match(Parser.COURSE_ALL_REGEX, lines[i]):
             i += 1
         
         while i < len(lines):
-            r = re.match(Parser.COURSE_REGEX, lines[i])
+            r = re.match(Parser.COURSE_ALL_REGEX, lines[i])
             lns.append(lines[i])
             i += 1
 
             # Get all lectures in class (loop until next course match)
-            while i < len(lines) and not re.match(Parser.COURSE_REGEX, lines[i]):
+            while i < len(lines) and not re.match(Parser.COURSE_ALL_REGEX, lines[i]):
                 lns.append(lines[i])
                 i += 1
 

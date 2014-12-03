@@ -19,27 +19,19 @@ class Department(object):
 class Course(object):
     """
     A course in the course catalog, consisting of multiple lectures. Contains
-    information about: department; course name; lectures; number of units.
-    """
-    INFO_KEYS = ["same_as",         # string, "SAME AS: [etc.]"
-                 "restrict",        # string, "RESTRICT: [etc.]"
-                 "xc",              # examination code as an int
-                 "grade_type",      # two-letter grade type, e.g. "SO"
-                 "units"]           # integer number of units
-    
-    def __init__(self, name, number, lec_list, **info_dict):
+    information about: course name and number; lectures.
+    """    
+    def __init__(self, name, number, lec_list):
         """
         Arguments:
 
         name - name of course, e.g. "SOFTWARE CONST LAB"
         number - string of catalog number + suffix if any, e.g. "35L"
         lec_list - list of lectures
-        info_dict - dict of info, with keys from Course.INFO_KEYS
         """
         self.name = name
         self.number = number
         self.lec_list = lec_list
-        self.info_dict = info_dict
     
     def __str__(self):
         """Returns the course name appended with a space to its number."""
@@ -111,7 +103,18 @@ class Lecture(object):
     One lecture (of possibly many) in a course. Contains information about: days 
     the lecture is held; professor name; lecture hours; list of Discussions.
     """
-    def __init__(self, number, days, prof_name, time_intv, capacity, disc_list):
+    INFO_KEYS = ["capacity",        # enrollment capacity
+                 "xc",              # examination code as an int
+                 "grade_type",      # two-letter grade type, e.g. "SO"
+                 "units",           # integer number of units
+                 "same_as",         # string, "SAME AS: [etc.]"
+                 "restrict"]        # string, "RESTRICT: [etc.]"
+                 
+    # 0 = number, 1 = days (align left), 2 = time_interval, 3 = prof_name
+    # 4 = capacity
+    LEC_FSTR = "LEC {0} [{1:<3}] {2} | {3} | EnCp: {4}"
+    
+    def __init__(self, number, days, prof_name, time_intv, info_dict, disc_list):
         """
         Arguments:
 
@@ -119,15 +122,23 @@ class Lecture(object):
         days - subset of "MTWRF"
         prof_name - name of TA
         time_intv - TimeInterval representing lecture hours
-        capacity - number of spots available
+        info_dict - dict of info, with keys from Lecture.INFO_KEYS
         disc_list - list of Discussions
         """
         self.number = number
         self.days = days
         self.prof_name = prof_name
         self.time_intv = time_intv
-        self.capacity = capacity
+        self.info_dict = info_dict
         self.disc_list = disc_list
+    
+    def __str__(self):
+        """
+        Returns a string representing this lecture (does not include
+        discussion information). Every item is aligned until the first pipe.
+        """
+        return Lecture.LEC_FSTR.format(self.number, self.days, str(self.time_intv),
+                                       self.prof_name, self.info_dict["capacity"])
 
 class Discussion(object):
     """
@@ -153,8 +164,8 @@ class Discussion(object):
 
     def __str__(self):
         """
-        Returns a string (no newline) displaying this discussion's info.
-        Every item is aligned until the pipe (ta_name).
+        Returns a string representing this discussion. Every item is aligned
+        until the pipe (ta_name).
         """
         return Discussion.DISC_FSTR.format(self.name, self.day,
                                            str(self.time_intv), self.ta_name)
