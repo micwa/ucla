@@ -1,9 +1,9 @@
 import re
-from course import Department, Course, Lecture, Discussion
-import util.utils as utils
-from util.time import Time, TimeInterval
+from crsparser.course import Department, Course, Lecture
+import crsparser.util.utils as utils
+from crsparser.util.time import Time, TimeInterval
 
-class Parser:
+class Parser(object):
     """
     Class that allows users to parse the course catalog. All methods are
     class methods; there is no need to instantiate any Parser objects.
@@ -18,25 +18,25 @@ class Parser:
             (r"(Y|N)?\s*"
              r"((?P<dashes>-+)|"
              r"(?P<lec_id>[0-9]{3}-[0-9]{3}-[0-9]{3}))\s+"
-             r"(?P<class_type>\w+)\s+"            # Class type, e.g. LEC or SEM
-             r"(?P<sec_num>[0-9][a-zA-Z]?)\s+"    # Section number
-             r"(?P<days>\w+)\s+"                  # Days held
-             r"(?P<time_start>" + Time.TIME_REGEX + ")\s*-\s*"   # Time start
-             r"(?P<time_end>" + Time.TIME_REGEX + ")\s+"         # Time end
-             r"(?P<loc>[^0-9]+[0-9]+[a-zA-z]*)?\s*"   # Optional: Location (depends on number at end)
-             r"(?P<prof>[^0-9]*)?\s*"                 # Optional: Professor name
-             r"(?P<capac>[0-9]+)\s+"              # Enrollment capacity
-             r"(?P<xc>[0-9]+)\s+"                 # Exam code
-             r"(?P<grade_type>[a-zA-Z]+)\s+"      # Grade type
-             r"(?P<units>[0-9])\.")               # Number of units (< 10)
+             r"(?P<class_type>\w+)\s+"              # Class type, e.g. LEC or SEM
+             r"(?P<sec_num>[0-9][a-zA-Z]?)\s+"      # Section number
+             r"(?P<days>\w+)\s+"                    # Days held
+             r"(?P<time_start>" + Time.TIME_REGEX + r")\s*-\s*" # Time start
+             r"(?P<time_end>" + Time.TIME_REGEX + r")\s+"       # Time end
+             r"(?P<loc>[^0-9]+[0-9]+[a-zA-z]*)?\s*" # Optional: Location (depends on number at end)
+             r"(?P<prof>[^0-9]*)?\s*"               # Optional: Professor name
+             r"(?P<capac>[0-9]+)\s+"                # Enrollment capacity
+             r"(?P<xc>[0-9]+)\s+"                   # Exam code
+             r"(?P<grade_type>[a-zA-Z]+)\s+"        # Grade type
+             r"(?P<units>[0-9])\.")                 # Number of units (< 10)
 
     # Full line
     COURSE_ALL_REGEX = COURSE_TITLE_REGEX + COURSE_LEC_REGEX
-    
+
     # List of all departments, in the order they will be encountered
     # in the listings (for UCLA, it's alphabetical).
     dept_list = []
-    
+
     def __init__(self):
         raise RuntimeError("What do you think you're doing?")
 
@@ -49,12 +49,10 @@ class Parser:
         is *exactly* the same as in the department file (i.e. case sensitive, though
         whitespace is stripped).
         """
-        file = open(filename)
-        lines = file.readlines()
-        for ln in lines:
-            Parser.dept_list.append(ln.strip())
-
-        file.close()
+        with open(filename) as f:
+            lines = f.readlines()
+            for ln in lines:
+                Parser.dept_list.append(ln.strip())
 
     @staticmethod
     def parse_single_course(line):
@@ -76,12 +74,12 @@ class Parser:
         """
         if Parser.dept_list == []:
             raise RuntimeError("List of departments is empty.")
-            
-        file = open(filename)
+
+        infile = open(filename)
         depts = []
-        
+
         # Temp variables
-        line = file.readline().strip()
+        line = infile.readline().strip()
         lines = []
         Parser.dept_list.append("\x00\x01\x02")  # So dept_list[i+1] doesn't raise an error
         Parser.dept_list.append("\x00\x01\x02")
@@ -91,8 +89,8 @@ class Parser:
         # Set up first department match
         # Look ahead only one department if the current department does not exist
         while (i < n and line != "" and line != Parser.dept_list[i] and
-                         line != Parser.dept_list[i+1]):
-            line = file.readline().strip()
+               line != Parser.dept_list[i+1]):
+            line = infile.readline().strip()
 
         # Account for look-ahead
         if i + 1 < n and line == Parser.dept_list[i+1]:
@@ -101,20 +99,20 @@ class Parser:
 
         while i < n and line != "":
             # Get all lines before next department name
-            line = file.readline()
+            line = infile.readline()
             i += 1
             if i > n:
                 break
-            
+
             while (line != "" and line != Parser.dept_list[i] and
                    line != Parser.dept_list[i+1]):
                 lines.append(line)
-                line = file.readline().strip()
+                line = infile.readline().strip()
 
             if i + 1 < n and line == Parser.dept_list[i+1]:
                 print "Skipped over:", Parser.dept_list[i]
                 i += 1
-                
+
             # Parse all lines in department
             d = Parser.parse_dept(Parser.dept_list[i - 1], lines)
             depts.append(d)
@@ -122,14 +120,14 @@ class Parser:
 
         Parser.dept_list.pop()
         Parser.dept_list.pop()
-        file.close()
-        
+        infile.close()
+
         return depts
 
     @staticmethod
     def parse_course(lines):
         lec_list = []
-        
+
         # Temporary variables
         disc_list = []
         info_dict = {}
@@ -150,26 +148,27 @@ class Parser:
                 time_end = r.group("time_end")
                 loc = r.group("loc")
                 prof = r.group("prof").strip()
-                
+
                 capac = r.group("capac")
                 xc = r.group("xc")
                 grade_type = r.group("grade_type")
                 units = r.group("units")
-                info_dict[Lecture.INFO_KEYS[0]] = capac;
-                info_dict[Lecture.INFO_KEYS[1]] = xc;
-                info_dict[Lecture.INFO_KEYS[2]] = grade_type;
-                info_dict[Lecture.INFO_KEYS[3]] = units;
-                
+                info_dict[Lecture.INFO_KEYS[0]] = loc
+                info_dict[Lecture.INFO_KEYS[1]] = capac
+                info_dict[Lecture.INFO_KEYS[2]] = xc
+                info_dict[Lecture.INFO_KEYS[3]] = grade_type
+                info_dict[Lecture.INFO_KEYS[4]] = units
+
                 h = utils.stoi(time_start)  # Since time_start does not have a suffix, add one if in afternoon
                 if h / 100 < 8:
                     time_start += "p"
-                
+
                 lec = Lecture(sec_num, days, prof, TimeInterval(time_start, time_end),
                               info_dict, disc_list)
                 lec_list.append(lec)
-        
+
         return Course(name, number, lec_list)
-            
+
     @staticmethod
     def parse_dept(dept, lines):
         courses = []
@@ -181,9 +180,8 @@ class Parser:
         # Set up first class match
         while i < len(lines) and not re.match(Parser.COURSE_ALL_REGEX, lines[i]):
             i += 1
-        
+
         while i < len(lines):
-            r = re.match(Parser.COURSE_ALL_REGEX, lines[i])
             lns.append(lines[i])
             i += 1
 
