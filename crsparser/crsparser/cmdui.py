@@ -25,12 +25,13 @@ _filter_names = []      # List of filter descriptions (strings)
 _status = ""            # Status of program
 
 def run():
-    
+    """Starts the program."""
     global _status
     _status = STATUS_UNLOADED
-    print "\n*****************"
-    print "*** crsparser ***"
-    print "*****************"
+    
+    print "\n***************"
+    print "** crsparser **"
+    print "***************"
         
     while True:
         print "\nMain menu"
@@ -52,13 +53,13 @@ def run():
             break
         else:
             print "Error: invalid option"
-            continue
-def foo():
-        Parser.load_dept_list("depts.txt")
-        depts = Parser.parse_catalog("data.txt")
-        
+            continue        
 
 def parse_data():
+    """
+    Prompts the user for the file containing the list of departments and the
+    course listings, and parses the data.
+    """
     print "\nParsing data"
     print "============\n"
     print "Use defaults of depts.txt and data.txt? (y/n)",
@@ -92,6 +93,7 @@ def parse_data():
     _status = STATUS_LOADED.format(0)
 
 def filter_data():
+    """Prompts the user to add filters, display results, or reset filters."""
     if _status == STATUS_UNLOADED:
         print "ERROR: no data loaded"
         print "\nPress <Enter> to continue..."
@@ -127,6 +129,7 @@ def _add_filter():
 
     while True:
         print "\nAdd a filter:"
+        print "-------------"
         print "    0: [Back]"
         for t in enumerate(FILTER_NAMES):
             print "    {0}: {1}".format(t[0] + 1, t[1])
