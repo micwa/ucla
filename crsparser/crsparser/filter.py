@@ -9,9 +9,9 @@ def filter(courses, fn_list):
     """
     Returns a list of booleans indicating whether the corresponding course
     in courses meets the criteria specified in args.
-    
+
     Arguments:
-    
+
     courses - list of courses to filter
     fn_list - list of functions f: Course -> bool
     """
@@ -48,11 +48,11 @@ def duration_le(n):
 def islab():
     """Returns a function that returns true if the Course is a lab."""
     return lambda crs: crs.islab()
-    
+
 def isupperdiv():
     """Returns a function that returns true if the Course is an upper division course."""
     return lambda crs: crs.isupperdiv()
-    
+
 def occurs_after(time):
     """
     Returns a function that returns true if the Course starts at or after

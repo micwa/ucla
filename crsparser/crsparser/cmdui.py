@@ -7,6 +7,7 @@ from crsparser.parse import Parser
 from crsparser.util.time import Time
 import crsparser.util.utils as utils
 
+# Constants
 STATUS_UNLOADED = "No data loaded"
 STATUS_LOADED = "Data loaded; filters added: {0}"
 FILTER_NAMES = ["Duration equals",
@@ -19,6 +20,7 @@ FILTER_NAMES = ["Duration equals",
                 "Is upper division (>=100)",
                 "Is a lab (\"L\" suffix)"]
 
+# Global module variables
 _depts = []             # List of Departments
 _filters = []           # List of functions to pass to filter.filter()
 _filter_names = []      # List of filter descriptions (strings)
@@ -137,7 +139,7 @@ def _add_filter():
         print "\nChoose an option:",
 
         option = raw_input()
-        fn = None
+        fn = None                   # To add to _filters/_filter_names
         name = None
 
         # Convert option to int
