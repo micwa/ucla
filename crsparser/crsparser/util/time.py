@@ -1,10 +1,10 @@
 import re
-import utils
+import crsparser.util.utils as utils
 
 class TimeInterval(object):
     """A time interval, consisting of a start time and an end time."""
-    
-    def __init__(self, start, end, align = True):
+
+    def __init__(self, start, end, align=True):
         """
         Arguments:
 
@@ -23,7 +23,7 @@ class TimeInterval(object):
             self.end = Time(end)
             self.align = align
         else:
-            raise TypeError("Invalid types (must be a pair of strings or Times")
+            raise TypeError("Invalid types (must be a pair of strings or Times)")
 
     def __str__(self):
         """
@@ -73,9 +73,9 @@ class Time(object):
         for validity, so 5:74 is the same as 6:14. However, does convert all
         hours to a number between 0 and 23 and minutes to a number between
         0 and 59.
-        
+
         time - a string representing the time, such as "7:00"; the format is
-               "hh:mm" with an optional "a|am|p|pm"; 
+               "hh:mm" with an optional "a|am|p|pm";
         """
         r = re.match(Time.TIME_REGEX, time)
         if r is not None:
@@ -87,8 +87,8 @@ class Time(object):
                     pm = 1
                 if "a" in r.group(3).lower() and hours == "12":
                     hours = 0
-                    
-            if utils.isint(hours) and utils.isint(mins):       
+
+            if utils.isint(hours) and utils.isint(mins):
                 self.hours = (int(hours) + int(mins) / 60 + 12 * pm) % 24
                 self.mins = int(mins) % 60
             else:
@@ -116,14 +116,14 @@ class Time(object):
             return True
         else:
             return False
-    
+
     def __le__(self, other):
         """Returns true if self is before or the same time as other, and false otherwise."""
         if (self.hours * 60 + self.mins) <= (other.hours * 60 + other.mins):
             return True
         else:
             return False
-    
+
     def __lt__(self, other):
         """Returns true if self is before other, and false otherwise."""
         if (self.hours * 60 + self.mins) < (other.hours * 60 + other.mins):

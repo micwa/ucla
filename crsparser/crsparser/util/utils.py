@@ -2,8 +2,6 @@
 Miscellaneous utility functions for error-checking and conversion.
 """
 
-from .time import Time
-
 def isint(n):
     """Returns true if n can be casted to an int."""
     try:
@@ -15,9 +13,10 @@ def isint(n):
 def istime(time):
     """Returns true if Time(time) does not raise an exception."""
     try:
+        from crsparser.util.time import Time
         Time(time)
         return True
-    except:
+    except ValueError:
         return False
 
 def stoi(s):
@@ -29,7 +28,7 @@ def stoi(s):
         s2 = "-"
     else:
         s2 = ""
-        
+
     for c in s:
         if c.isdigit():
             s2 += c
@@ -38,5 +37,5 @@ def stoi(s):
 
     if s2 == "":
         raise ValueError("Not a number convertible to an int")
-        
+
     return int(s2)

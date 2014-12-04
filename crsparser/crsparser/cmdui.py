@@ -2,10 +2,10 @@
 A command-line interface for crsparser.
 """
 
-import filter
-from parse import Parser
-from util.time import Time
-import util.utils as utils
+import crsparser.filter as filter
+from crsparser.parse import Parser
+from crsparser.util.time import Time
+import crsparser.util.utils as utils
 
 STATUS_UNLOADED = "No data loaded"
 STATUS_LOADED = "Data loaded; filters added: {0}"
@@ -28,11 +28,11 @@ def run():
     """Starts the program."""
     global _status
     _status = STATUS_UNLOADED
-    
+
     print "\n***************"
     print "** crsparser **"
     print "***************"
-        
+
     while True:
         print "\nMain menu"
         print "========="
@@ -41,9 +41,9 @@ def run():
         print "3. Quit"
         print "\n{0}: {1}".format("STATUS", _status)
         print "\nChoose an option:",
-        
+
         option = raw_input()
-        
+
         if option == "1":
             parse_data()
         elif option == "2":
@@ -53,7 +53,7 @@ def run():
             break
         else:
             print "Error: invalid option"
-            continue        
+            continue
 
 def parse_data():
     """
@@ -63,9 +63,9 @@ def parse_data():
     print "\nParsing data"
     print "============\n"
     print "Use defaults of depts.txt and data.txt? (y/n)",
-    
+
     option = raw_input()
-    
+
     if option == "" or option[0].lower() == "y":    # Allow empty input
         dept_file = "depts.txt"
         data_file = "data.txt"
@@ -74,10 +74,10 @@ def parse_data():
         dept_file = raw_input()
         print "Name of file with catalog data:",
         data_file = raw_input()
-    
+
     # Load departments into _depts
     print "\nParsing data..."
-    
+
     try:
         Parser.load_dept_list(dept_file)
         global _depts
@@ -87,7 +87,7 @@ def parse_data():
         print "\nPress <Enter> to continue..."
         raw_input()
         return
-    
+
     print "\n...Done"
     global _status
     _status = STATUS_LOADED.format(0)
@@ -99,7 +99,7 @@ def filter_data():
         print "\nPress <Enter> to continue..."
         raw_input()
         return
-    
+
     while True:
         print "\nFilters"
         print "======="
@@ -109,9 +109,9 @@ def filter_data():
         print "4. Back"
         print "\nFilters added << " + " << ".join(_filter_names)
         print "\nChoose an option:",
-        
+
         option = raw_input()
-        
+
         if option == "1":
             _add_filter()
         elif option == "2":
@@ -131,29 +131,29 @@ def _add_filter():
         print "\nAdd a filter:"
         print "-------------"
         print "    0: [Back]"
-        for t in enumerate(FILTER_NAMES):
-            print "    {0}: {1}".format(t[0] + 1, t[1])
+        for i, f in enumerate(FILTER_NAMES):
+            print "    {0}: {1}".format(i + 1, f)
         print "\nFilters added << " + " << ".join(_filter_names)
         print "\nChoose an option:",
-        
+
         option = raw_input()
         fn = None
         name = None
-        
+
         # Convert option to int
         if not utils.isint(option):
             print "Error: not a number"
             continue
         else:
             option = int(option)
-        
+
         # Add appropriate filter to _filters
         if option == 0:
             break
         elif option >= 1 and option <= 3:       # Integer number of minutes
             print "Enter number of minutes:",
             mins = raw_input()
-            
+
             if not utils.isint(mins):
                 print "Error: invalid number of minutes"
                 continue
@@ -168,7 +168,7 @@ def _add_filter():
         elif option >= 4 and option <= 7:       # A time, e.g. "9:00"
             print "Enter a time:",
             time = raw_input()
-            
+
             if not utils.istime(time):
                 print "Error: invalid time"
                 continue
@@ -190,10 +190,9 @@ def _add_filter():
         else:
             print "Error: invalid option"
             continue
-        
+
         _filters.append(fn)
         _filter_names.append(name)
-        print "---", _filter_names
 
 def _display_results():
     for d in _depts:
