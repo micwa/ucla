@@ -129,17 +129,22 @@ def add_course(courses, found):
     while True:
         print "Sections (comma-separated):",
         sections = raw_input()
-        sections = [c.upper() for c in sections if c.isalnum()]
+        sections = sections.split(",")
 
         try:
-            # Go two chars at a time
-            for i in xrange(0, len(sections), 2):
-                if sections[i].isdigit() and sections[i+1].isalpha():
-                    sec_list.append(sections[i] + sections[i+1])
-                else:
+            for sec in sections:
+                sec = sec.strip()
+                if len(sec) == 1 and not sec[0].isdigit():
                     raise ValueError("Invalid format")
-        except (ValueError, IndexError):
+                elif len(sec) == 2 and not sec[1].isalpha():
+                    raise ValueError("Invalid format")
+                elif len(sec) > 2:
+                    raise ValueError("Invalid format")
+
+                sec_list.append(sec)
+        except ValueError:
             print "Invalid format for sections."
+            sec_list = []
         else:
             break
 
@@ -218,7 +223,7 @@ def _scan_course(name, url, sections):
     tuples = []          # Each tuple corresponds to the (En, EnCp) of each section
     for sec in sections:
         while i < len(lines):
-            if SEC_NUMBER in lines[i] and sec in lines[i]:
+            if SEC_NUMBER in lines[i] and (">" + sec + "<") in lines[i]:
                 break
             i += 1
         while i < len(lines):
