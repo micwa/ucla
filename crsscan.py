@@ -1,13 +1,23 @@
-import urllib
 import re
 import time
 import threading
+import urllib
+import smtplib
+from email.mime.text import MIMEText
 
 SCAN_INTERVAL = 1    # Minutes between each scan
-FOUND_INTERVAL = 2  # If a course is found, minutes until course is scanned again
+FOUND_INTERVAL = 60  # If a course is found, minutes until course is scanned again
 
-PASS_FILE = "_data/gmail.txt"
-_user = None
+# For email
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+
+DATA_DIR = "_data/"
+RECIP_ADDR = "crs.scan.ucla@gmail.com"      # The recipient address (for now, only one)
+SENDER_FILE = DATA_DIR + "gmail.txt"        # Contains email/password info for sender
+#COURSE_FILE = DATA_DIR + "courses.txt"      # List of courses
+
+_email = None
 _password = None
 
 class ScanThread(threading.Thread):
@@ -36,18 +46,14 @@ class ScanThread(threading.Thread):
         self.do_run = False
 
 def run():
-    courses = {}    # Dict mapping string -> [string,[string]]
+    courses = {}    # Dict mapping string -> (string,[string])
     found = {}      # Dict mapping string -> int
     started = False # Whether the scan has started or not
     thr = None
-    
-    courses["Physics 1B"] = ["http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001B+++",
-                             ["1A", "1B", "1D"]]
-    found["Physics 1B"] = 0
-    courses["Physics 11"] = ["http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0011++++",
-                             ["1A", "1B"]]
-    found["Physics 11"] = 1
 
+    # Load courses
+    load_courses(courses, found)
+    
     print "******************"
     print "* Course Scanner *"
     print "******************"
@@ -60,6 +66,9 @@ def run():
         print "3. Start scanning"
         print "4. Stop scanning"
         print "5. Quit"
+
+        if started:
+            print "\n***SCANNING STARTED***"
 
         print "\nChoose an option:",
         option = raw_input()
@@ -79,7 +88,7 @@ def run():
         elif option == "4":
             thr.stop()           # Must stop (and interrupt), then wait for it to finish
             thr.join()           # or else the thread holds onto the file
-            start = False
+            started = False
             print "Scanning stopped"
         elif option == "5":
             print "\nGoodbye!"
@@ -90,6 +99,22 @@ def run():
         else:
             print "\nInvalid option."
 
+def load_courses(courses, found):
+    courses["Anthro 9"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=ANTHRO&idxcrs=0009++++",
+                           ["1A", "1B", "1C", "1D", "1E", "1F"])
+    courses["Math 32B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0032B+++",
+                           ["3A", "3B", "3C", "3D", "3E", "3F"])
+    courses["Math 33A"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0033A+++",
+                           ["1A", "1B", "1C", "1D", "1E", "1F"])
+    courses["Physics 1B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001B+++",
+                             ["1A", "1B", "1C", "1D", "1E"])
+    courses["Physics 1C"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001C+++",
+                             ["1A", "1B", "1C", "1D", "1E"])
+
+    # Set all found[course] to 0
+    for name in courses.keys():
+        found[name] = 0
+
 def add_course(courses, found):
     """Prompts for a course to add."""
     print "\nAdd a course"
@@ -99,6 +124,7 @@ def add_course(courses, found):
     print "URL:",
     url = raw_input()
 
+    # Parse sections
     sec_list = []
     while True:
         print "Sections (comma-separated):",
@@ -117,19 +143,20 @@ def add_course(courses, found):
         else:
             break
 
-    courses[name] = [name, sec_list]
+    courses[name] = (name, sec_list)
     found[name] = 0
 
 def show_courses(courses):
     """Prints the list of courses to screen."""
     print "\n---Added courses---\n"
     for name, data in courses.iteritems():
-        print "{0}: {1}".format(name, ", ".join(data[1]))
+        print "{0:<12}: {1}".format(name, ", ".join(data[1]))
 
 def scan_once(courses, found, outfile):
     """
-    Scans courses (a dict), where courses[string] = [url,[sections]].
-    If a course section is available, sets found[course] to FOUND_INTERVAL.
+    Scans courses (a dict), where courses[string] = (url,[sections]).
+    If a course section is available, notifies the user and sets found[course]
+    to FOUND_INTERVAL.
     """
 
     t = time.ctime(time.time())
@@ -148,20 +175,25 @@ def scan_once(courses, found, outfile):
         try:
             tuples = _scan_course(name, data[0], data[1])
         except:
-            outfile.write("ERROR scanning course.\n")
+            outfile.write("*****ERROR scanning course.\n")
             continue
         
         for i in xrange(len(data[1])):
-            # Section is open
-            if tuples[i][0] != tuples[i][1]:
+            # Section is open; note that if multiple sections are open, user_notify()
+            # is called multiple times
+            if tuples[i][0] < tuples[i][1]:
                 msg = ("***Section {0} is open! {1} out of {2} spot taken\n"
                        .format(data[1][i], tuples[i][0], tuples[i][1]))
                 outfile.write(msg)
-
-                user_notify(name, msg)
                 found[name] = FOUND_INTERVAL
+
+                if user_notify(name, msg):
+                    outfile.write("+++Email sent to {0}\n".format(RECIP_ADDR))
+                else:
+                    outfile.write("*****ERROR: failed to send email to {0}\n".format(RECIP_ADDR))
             else:
-                outfile.write("*Section {0} is closed ({1}/{2})\n"
+                # Closed message is more concise
+                outfile.write("*{0}: {1}/{2}\n"
                               .format(data[1][i], tuples[i][0], tuples[i][1]))
 
 def _scan_course(name, url, sections):
@@ -206,7 +238,37 @@ def _scan_course(name, url, sections):
     return tuples
 
 def user_notify(course, msg):
-    pass
+    """
+    Notifies the RECIP_ADDR about the course being opened, sending them the given message.
+    Returns true if the mail was sent successfully, and false otherwise.
+    """
+    global _email, _password
+
+    # Assume first line is email, second is password
+    if _email is None and _password is None:
+        with open(SENDER_FILE) as passfile:
+            _email = passfile.readline().strip()
+            _password = passfile.readline().strip()
+
+    # Create message, then connect to SMTP server
+    msg = MIMEText(msg)
+    msg["From"] = _email
+    msg["To"] = RECIP_ADDR
+    msg["Subject"] = "{0} is open!".format(course)
+
+    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    # server.set_debuglevel(True)
+
+    try:
+        server.starttls()
+        server.login(_email, _password)
+        server.sendmail(_email, [RECIP_ADDR], msg.as_string())
+    except smtplib.SMTPException:
+        return False
+    finally:
+        server.quit()
+
+    return True
 
 if __name__ == "__main__":
     run()
