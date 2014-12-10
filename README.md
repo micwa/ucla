@@ -1,4 +1,4 @@
-A repository for all things UCLA. The _school directory contains class-related
+A repository for all things UCLA. The \_school directory contains class-related
 stuff; all the other folders are repo-like folders themselves.
 
 ### Projects
@@ -16,14 +16,26 @@ using function variables and lambdas wrapping functions taking varying numbers
 of arguments (see filter.py more details).
 
 The parser accepts course listings data in the format used by the quarterly
-"Schedule of Classes" UCLA distributes on the
-[registrar's website] (http://www.registrar.ucla.edu/).
-To use the parser, download the pdf, copy all the course listings text into
-a file, and then use Parser to parse the data. Note that one must also supply
-a list of departments before using Parser (one is included in the /data folder
-for convenience).
+"Schedule of Classes" UCLA distributes on the [registrar's website]
+(http://www.registrar.ucla.edu/).  To use the parser, download the pdf, copy
+all the course listings text into a file, and then use Parser to parse the
+data. Note that one must also supply a list of departments before using Parser
+(one is included in the /data folder for convenience).
 
-Also included is a command-line interface `cmdui.py`, which uses the parser
-to parse, filter, and display course data. If you're feeling lazy and don't
-want to create a new script, run `python main.py` from the root project
-directory to start the program.
+Also included is a command-line interface `cmdui.py`, which uses the parser to
+parse, filter, and display course data. If you're feeling lazy and don't want
+to create a new script, run `python main.py` from the root project directory to
+start the program.
+
+### Scripts
+
+Crsscan.py
+    * Edit load\_courses() to add courses to scan; use a new ScanThread to scan,
+      or just call scan\_once()
+    * Edit global variables to change sender/recipient email, scan interval,
+      file directory
+    * Logs results to a file and sends an email when a class has an opening
+
+### Author
+
+Michael Wang <micwa@ucla.edu>
