@@ -107,8 +107,8 @@ def load_courses(courses, found):
                            ["1A", "1B", "1C", "1D", "1E", "1F"])
     courses["Physics 1B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001B+++",
                              ["1A", "1B", "1C", "1D", "1E"])
-    courses["Physics 1C"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001C+++",
-                             ["1A", "1B", "1C", "1D", "1E"])
+    #courses["Physics 1C"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001C+++",
+    #                         ["1A", "1B", "1C", "1D", "1E"])
 
     # Set all found[course] to 0
     for name in courses.keys():
@@ -213,18 +213,14 @@ def _scan_course(name, url, sections):
     url = urllib.urlopen(url)
     lines = url.readlines()
 
-    # Constants, and temporary variables
+    # Constants, and list of values to search for
     SEC_NUMBER = "SectionNumber"
-    EN_TOTAL = "_EnrollTotal"
-    EN_CAP = "_EnrollCap"
-    WL_TOTAL = "_WaitListTotal"
-    WL_CAP = "_WaitListCap"
-    EN_TOTAL_REGEX = EN_TOTAL + r"[^0-9]*(?P<en_total>[0-9]+)"
-    EN_CAP_REGEX = EN_CAP + r"[^0-9]*(?P<en_cap>[0-9]+)"
-    WL_TOTAL_REGEX = WL_TOTAL + r"[^0-9]*(?P<wl_total>[0-9]+)"
-    WL_CAP_REGEX = WL_CAP + r"[^0-9]*(?P<wl_cap>[0-9]+)"
-    en_total = 0
-    en_cap = 0
+    
+    val_list = ["_EnrollTotal", "_EnrollCap", "_WaitListTotal", "_WaitListCap"]
+    regex_dict = {}
+    for item in val_list:
+        regex_dict[item] = item + r"[^0-9]*([0-9]+)"
+    results = [0, 0, 0, 0]
     i = 0
 
     tuples = []          # Each tuple corresponds to the (En, EnCp, Wl, WlCp) of each section
@@ -233,31 +229,14 @@ def _scan_course(name, url, sections):
             if SEC_NUMBER in lines[i] and (">" + sec + "<") in lines[i]:
                 break
             i += 1
-        while i < len(lines):
-            if EN_TOTAL in lines[i]:
-                r = re.search(EN_TOTAL_REGEX, lines[i])
-                en_total = int(r.group("en_total"))
-                break
-            i += 1
-        while i < len(lines):
-            if EN_CAP in lines[i]:
-                r = re.search(EN_CAP_REGEX, lines[i])
-                en_cap = int(r.group("en_cap"))
-                break
-            i += 1
-        while i < len(lines):
-            if WL_TOTAL in lines[i]:
-                r = re.search(WL_TOTAL_REGEX, lines[i])
-                wl_total = int(r.group("wl_total"))
-                break
-            i += 1
-        while i < len(lines):
-            if WL_CAP in lines[i]:
-                r = re.search(WL_CAP_REGEX, lines[i])
-                wl_cap = int(r.group("wl_cap"))
-                break
-            i += 1
-        tuples.append((en_total, en_cap, wl_total, wl_cap))
+        for n, item in enumerate(val_list):         # Search for each value
+            while i < len(lines):
+                if item in lines[i]:
+                    r = re.search(regex_dict[item], lines[i])
+                    results[n] = int(r.group(1))    # No longer using (P?<name>)
+                    break
+                i += 1
+        tuples.append(tuple(results))
 
     return tuples
 
