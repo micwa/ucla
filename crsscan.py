@@ -15,7 +15,6 @@ SMTP_PORT = 587
 DATA_DIR = "_data/"
 RECIP_ADDR = "crs.scan.ucla@gmail.com"      # The recipient address (for now, only one)
 SENDER_FILE = DATA_DIR + "gmail.txt"        # Contains email/password info for sender
-#COURSE_FILE = DATA_DIR + "courses.txt"      # List of courses
 
 _email = None
 _password = None
@@ -184,11 +183,15 @@ def scan_once(courses, found, outfile):
             continue
         
         for i in xrange(len(data[1])):
-            # Section is open; note that if multiple sections are open, user_notify()
-            # is called multiple times
-            if tuples[i][0] < tuples[i][1]:
-                msg = ("***Section {0} is open! {1} out of {2} spot taken\n"
-                       .format(data[1][i], tuples[i][0], tuples[i][1]))
+            # Section OR waitlist is open; note that if multiple sections are open,
+            # user_notify() is called multiple times
+            if tuples[i][0] < tuples[i][1] or tuples[i][2] < tuples[i][3]:
+                if tuples[i][0] < tuples[i][1]:
+                    msg = ("***Section {0} is open! {1} out of {2} spots taken\n"
+                           .format(data[1][i], tuples[i][0], tuples[i][1]))
+                else:
+                    msg = ("***Section {0}'s WAITLIST is open! {1} out of {2} spots taken\n"
+                           .format(data[1][i], tuples[i][2], tuples[i][3]))
                 outfile.write(msg)
                 found[name] = FOUND_INTERVAL
 
@@ -198,8 +201,8 @@ def scan_once(courses, found, outfile):
                     outfile.write("*****ERROR: failed to send email to {0}\n".format(RECIP_ADDR))
             else:
                 # Closed message is more concise
-                outfile.write("*{0}: {1}/{2}\n"
-                              .format(data[1][i], tuples[i][0], tuples[i][1]))
+                outfile.write("*{0}: {1}/{2}, {3}/{4}\n"
+                              .format(data[1][i], tuples[i][0], tuples[i][1], tuples[i][2], tuples[i][3]))
 
 def _scan_course(name, url, sections):
     """
@@ -214,13 +217,17 @@ def _scan_course(name, url, sections):
     SEC_NUMBER = "SectionNumber"
     EN_TOTAL = "_EnrollTotal"
     EN_CAP = "_EnrollCap"
+    WL_TOTAL = "_WaitListTotal"
+    WL_CAP = "_WaitListCap"
     EN_TOTAL_REGEX = EN_TOTAL + r"[^0-9]*(?P<en_total>[0-9]+)"
     EN_CAP_REGEX = EN_CAP + r"[^0-9]*(?P<en_cap>[0-9]+)"
-    curr_total = 0
-    curr_cap = 0
+    WL_TOTAL_REGEX = WL_TOTAL + r"[^0-9]*(?P<wl_total>[0-9]+)"
+    WL_CAP_REGEX = WL_CAP + r"[^0-9]*(?P<wl_cap>[0-9]+)"
+    en_total = 0
+    en_cap = 0
     i = 0
 
-    tuples = []          # Each tuple corresponds to the (En, EnCp) of each section
+    tuples = []          # Each tuple corresponds to the (En, EnCp, Wl, WlCp) of each section
     for sec in sections:
         while i < len(lines):
             if SEC_NUMBER in lines[i] and (">" + sec + "<") in lines[i]:
@@ -229,16 +236,28 @@ def _scan_course(name, url, sections):
         while i < len(lines):
             if EN_TOTAL in lines[i]:
                 r = re.search(EN_TOTAL_REGEX, lines[i])
-                curr_total = int(r.group("en_total"))
+                en_total = int(r.group("en_total"))
                 break
             i += 1
         while i < len(lines):
             if EN_CAP in lines[i]:
                 r = re.search(EN_CAP_REGEX, lines[i])
-                curr_cap = int(r.group("en_cap"))
+                en_cap = int(r.group("en_cap"))
                 break
             i += 1
-        tuples.append((curr_total, curr_cap))
+        while i < len(lines):
+            if WL_TOTAL in lines[i]:
+                r = re.search(WL_TOTAL_REGEX, lines[i])
+                wl_total = int(r.group("wl_total"))
+                break
+            i += 1
+        while i < len(lines):
+            if WL_CAP in lines[i]:
+                r = re.search(WL_CAP_REGEX, lines[i])
+                wl_cap = int(r.group("wl_cap"))
+                break
+            i += 1
+        tuples.append((en_total, en_cap, wl_total, wl_cap))
 
     return tuples
 
