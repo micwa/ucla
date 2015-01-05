@@ -85,10 +85,13 @@ def run():
                 started = True
                 print "\nStarting scan..."
         elif option == "4":
-            thr.stop()           # Must stop (and interrupt), then wait for it to finish
-            thr.join()           # or else the thread holds onto the file
-            started = False
-            print "Scanning stopped"
+            if not started:
+                print "\nERROR: scanning has not been started"
+            else:
+                thr.stop()           # Must stop (and interrupt), then wait for it to finish
+                thr.join()           # or else the thread holds onto the file
+                started = False
+                print "Scanning stopped"
         elif option == "5":
             print "\nGoodbye!"
             if thr is not None:
@@ -100,7 +103,7 @@ def run():
 
 def load_courses(courses, found):
     courses["Anthro 9"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=ANTHRO&idxcrs=0009++++",
-                           ["1A", "1B", "1C", "1D", "1E", "1F"])
+                           ["1A", "1B", "1C", "1G", "1E", "1F"])
     courses["Math 32B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0032B+++",
                            ["3A", "3B", "3C", "3D", "3E", "3F"])
     courses["Math 33A"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0033A+++",
