@@ -1,3 +1,10 @@
+"""
+A command-line operated course scanner, configured to scan the UCLA course
+listings on www.registrar.ucla.edu.
+
+Copyright (C) 2014 by Michael Wang
+"""
+
 import re
 import time
 import threading
@@ -67,7 +74,7 @@ def run():
         print "5. Quit"
 
         if started:
-            print "\n***SCANNING STARTED***"
+            print "\n***SCAN IN PROGRESS***"
 
         print "\nChoose an option:",
         option = raw_input()
@@ -102,16 +109,16 @@ def run():
             print "\nInvalid option."
 
 def load_courses(courses, found):
-    courses["Anthro 9"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=ANTHRO&idxcrs=0009++++",
-                           ["1A", "1B", "1C", "1G", "1E", "1F"])
+    #courses["Anthro 9"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=ANTHRO&idxcrs=0009++++",
+                           #["1A", "1B", "1D", "1E", "1F"])
     courses["Math 32B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0032B+++",
                            ["3A", "3B", "3C", "3D", "3E", "3F"])
     courses["Math 33A"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0033A+++",
                            ["1A", "1B", "1C", "1D", "1E", "1F"])
+    courses["Physics 1A"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001A+++",
+                             ["2A", "2B", "2C", "2D", "2E"])
     courses["Physics 1B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001B+++",
                              ["1A", "1B", "1C", "1D", "1E"])
-    #courses["Physics 1C"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001C+++",
-    #                         ["1A", "1B", "1C", "1D", "1E"])
 
     # Set all found[course] to 0
     for name in courses.keys():

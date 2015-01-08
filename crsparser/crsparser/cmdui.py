@@ -1,5 +1,7 @@
 """
 A command-line interface for crsparser.
+
+Copyright (C) 2014 by Michael Wang
 """
 
 import crsparser.filter as filter
