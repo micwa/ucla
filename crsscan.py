@@ -38,7 +38,7 @@ class ScanThread(threading.Thread):
         self.found = found
         self.log_file = log_file
         self.do_run = True
-        self.event = threading.Event()       # So join() will interrupt wait()
+        self.event = threading.Event()       # So set() will interrupt wait()
 
     def run(self):
         with open(self.log_file, "w") as outfile:
@@ -95,7 +95,7 @@ def run():
             if not started:
                 print "\nERROR: scanning has not been started"
             else:
-                thr.stop()           # Must stop (and interrupt), then wait for it to finish
+                thr.stop()           # Must stop (i.e. interrupt), then wait for it to finish
                 thr.join()           # or else the thread holds onto the file
                 started = False
                 print "Scanning stopped"

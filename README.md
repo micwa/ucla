@@ -1,7 +1,7 @@
 A repository for all things UCLA. The \_school directory contains class-related
 stuff; all the other folders are repo-like folders themselves.
 
-### Projects
+## Overview
 
 Besides miscellaneous scripts, this repo will occasionally be updated with
 "projects" (i.e. programs larger than one or two files) that might be of some
@@ -27,15 +27,20 @@ parse, filter, and display course data. If you're feeling lazy and don't want
 to create a new script, run `python main.py` from the root project directory to
 start the program.
 
-### Scripts
+## Scripts
 
 Crsscan.py
-    * Edit load\_courses() to add courses to scan; use a new ScanThread to scan,
-      or just call scan\_once()
-    * Edit global variables to change sender/recipient email, scan interval,
-      file directory
-    * Logs results to a file and sends an email when a class has an opening
+    * Scans the courses specified in load\_courses() every SCAN_INTERVAL
+      minutes, and logs results to a file
+    * If there is an opening, sends an email notification
+    * TO USE:
+        1. Add courses and sections to scan in `load_courses()`
+        2. If using own client, create a new ScanThread to scan, or just call
+           `scan_once()`
+        3. Edit global variables to change sender/recipient email, scan
+           interval, file directory
+        4. Add a text file containing (or hardcode) username/password for email
 
-### Author
+## Author
 
 Michael Wang <micwa@ucla.edu>
