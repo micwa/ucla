@@ -5,6 +5,7 @@ listings on www.registrar.ucla.edu.
 Copyright (C) 2014 by Michael Wang
 """
 
+import sys
 import re
 import time
 import threading
@@ -39,6 +40,7 @@ class ScanThread(threading.Thread):
         self.log_file = log_file
         self.do_run = True
         self.event = threading.Event()      # To interrupt wait() later
+        self.daemon = True
 
     def run(self):
         with open(self.log_file, "w") as outfile:
@@ -103,10 +105,7 @@ def run():
                 print "Scanning stopped"
         elif option == "5":
             print "\nGoodbye!"
-            if thr:
-                thr.stop()
-                thr.join()
-            break
+            sys.exit()
         else:
             print "\nInvalid option."
 
