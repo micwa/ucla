@@ -38,14 +38,16 @@ class ScanThread(threading.Thread):
         self.found = found
         self.log_file = log_file
         self.do_run = True
-        self.event = threading.Event()       # So set() will interrupt wait()
+        self.event = threading.Event()      # To interrupt wait() later
 
     def run(self):
         with open(self.log_file, "w") as outfile:
             while self.do_run:
+                t = time.time()
                 scan_once(self.courses, self.found, outfile)
                 outfile.flush()
-                self.event.wait(SCAN_INTERVAL * 60)
+                elapsed = time.time() - t   # So time between intervals is consistent
+                self.event.wait(SCAN_INTERVAL * 60 - elapsed)
 
     def stop(self):
         self.event.set()
@@ -101,7 +103,7 @@ def run():
                 print "Scanning stopped"
         elif option == "5":
             print "\nGoodbye!"
-            if thr is not None:
+            if thr:
                 thr.stop()
                 thr.join()
             break
@@ -109,11 +111,7 @@ def run():
             print "\nInvalid option."
 
 def load_courses(courses, found):
-    #courses["Anthro 9"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=ANTHRO&idxcrs=0009++++",
-                           #["1A", "1B", "1D", "1E", "1F"])
-    courses["Math 32B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0032B+++",
-                           ["3A", "3B", "3C", "3D", "3E", "3F"])
-    courses["Math 33A"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=MATH&idxcrs=0033A+++",
+    courses["Math 33B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=MATH&idxcrs=0033B+++",
                            ["1A", "1B", "1C", "1D", "1E", "1F"])
     courses["Physics 1A"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001A+++",
                              ["2A", "2B", "2C", "2D", "2E"])
@@ -173,9 +171,8 @@ def scan_once(courses, found, outfile):
     to FOUND_INTERVAL.
     """
 
-    t = time.ctime(time.time())
-    t = t[t.find(" ") + 1:t.rfind(":")]
-    outfile.write("\nBeginning new scan at: {0}\n".format(t))
+    t = time.strftime("%d-%b-%y %H:%M:%S", time.localtime())
+    outfile.write("\nNew scan at: {0}\n".format(t))
     outfile.write("-----------------------------------")
     
     for name, data in courses.iteritems():
@@ -223,12 +220,12 @@ def _scan_course(name, url, sections):
     url = urllib.urlopen(url)
     lines = url.readlines()
 
-    # Constants, and list of values to search for
+    # Names to look for
     SEC_NUMBER = "SectionNumber"
+    VAL_LIST = ["_EnrollTotal", "_EnrollCap", "_WaitListTotal", "_WaitListCap"]
     
-    val_list = ["_EnrollTotal", "_EnrollCap", "_WaitListTotal", "_WaitListCap"]
-    regex_dict = {}
-    for item in val_list:
+    regex_dict = {}      # Simple regexes
+    for item in VAL_LIST:
         regex_dict[item] = item + r"[^0-9]*([0-9]+)"
     results = [0, 0, 0, 0]
     i = 0
@@ -239,7 +236,7 @@ def _scan_course(name, url, sections):
             if SEC_NUMBER in lines[i] and (">" + sec + "<") in lines[i]:
                 break
             i += 1
-        for n, item in enumerate(val_list):         # Search for each value
+        for n, item in enumerate(VAL_LIST):         # Search for each value
             while i < len(lines):
                 if item in lines[i]:
                     r = re.search(regex_dict[item], lines[i])
@@ -258,7 +255,7 @@ def user_notify(course, msg):
     global _email, _password
 
     # Assume first line is email, second is password
-    if _email is None and _password is None:
+    if not _email and not _password:
         with open(SENDER_FILE) as passfile:
             _email = passfile.readline().strip()
             _password = passfile.readline().strip()
