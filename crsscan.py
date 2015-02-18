@@ -14,7 +14,6 @@ import smtplib
 from email.mime.text import MIMEText
 
 SCAN_INTERVAL = 1    # Minutes between each scan
-FOUND_INTERVAL = 60  # If a course is found, minutes until course is scanned again
 
 # For email
 SMTP_SERVER = "smtp.gmail.com"
@@ -30,13 +29,11 @@ _password = None
 class ScanThread(threading.Thread):
     """
     A thread that runs scan_once() every SCAN_INTERVAL minutes with
-    the specified courses, found, and log file.
+    the specified courses and a log file.
     """
-    
-    def __init__(self, courses, found, log_file):
+    def __init__(self, courses, log_file):
         threading.Thread.__init__(self)
         self.courses = courses
-        self.found = found
         self.log_file = log_file
         self.do_run = True
         self.event = threading.Event()      # To interrupt wait() later
@@ -46,7 +43,7 @@ class ScanThread(threading.Thread):
         with open(self.log_file, "w") as outfile:
             while self.do_run:
                 t = time.time()
-                scan_once(self.courses, self.found, outfile)
+                scan_once(self.courses, outfile)
                 outfile.flush()
                 elapsed = time.time() - t   # So time between intervals is consistent
                 self.event.wait(SCAN_INTERVAL * 60 - elapsed)
@@ -55,14 +52,63 @@ class ScanThread(threading.Thread):
         self.event.set()
         self.do_run = False
 
+class Course(object):
+    """
+    A course to scan, which stores enrollment information.
+    """
+    def __init__(self, name, url, sections):
+        self.name = name
+        self.url = url
+        self.sections = sections
+        
+        self._tups = None       # Dict to store section enrollment tuples
+
+    def update(self, tuples):
+        """
+        Updates this course's enrollment information. Returns a list of 4-tuples
+        (section, type, filled, capacity) for each newly opened course, where type is either
+        'E' (enroll) or 'W' (waitlist).
+        Note that while this solves the problem of double-scanning the same opened class
+        without having a scan delay (which could make you miss a notification in that time),
+        it is possible that, in a small time frame, someone enrolls in a course and another
+        person immediately drops the same course, you will not be notified of the event.
+        With the slow update time of UCLA's servers, however, this is not much of a problem.
+        
+        tuples - a list of 4-tuples of the enrollment numbers of the
+                 corresponding section
+        """
+        open = []
+        if not self._tups:
+            self._tups = {}
+            for sec, tup in zip(self.sections, tuples):
+                self._tups[sec] = tup
+                if tup[0] < tup[1]:
+                    open.append((sec, 'E', tup[0], tup[1]))
+                elif tup[2] < tup[3]:
+                    open.append((sec, 'W', tup[2], tup[3]))
+            return open
+
+        # Getting here means the course has been updated at least once already.
+        # Assume that enrollment/waitlist capacities are constant.
+        for sec, tup in zip(self.sections, tuples):
+            prev = self._tups[sec]
+            
+            # Don't do anything if enrolled hasn't changed
+            if prev[0] != tup[0] and prev[0] > tup[0]:
+                open.append((sec, 'E'))
+            if prev[2] != tup[2] and prev[2] > tup[2]:
+                open.append((sec, 'W'))
+                
+            self._tups[sec] = tup
+        return open
+
 def run():
-    courses = {}    # Dict mapping string -> (string,[string])
-    found = {}      # Dict mapping string -> int
+    courses = []    # List of Courses
     started = False # Whether the scan has started or not
     thr = None
 
     # Load courses
-    load_courses(courses, found)
+    load_courses(courses)
     
     print "******************"
     print "* Course Scanner *"
@@ -84,14 +130,14 @@ def run():
         option = raw_input()
 
         if option == "1":
-            add_course(courses, found)
+            add_course(courses)
         elif option == "2":
             show_courses(courses)
         elif option == "3":
             if started:
                 print "\nERROR: scanning has already started."
             else:
-                thr = ScanThread(courses, found, "scan.log")
+                thr = ScanThread(courses, "scan.log")
                 thr.start()
                 started = True
                 print "\nStarting scan..."
@@ -109,19 +155,15 @@ def run():
         else:
             print "\nInvalid option."
 
-def load_courses(courses, found):
-    courses["Math 33B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=MATH&idxcrs=0033B+++",
-                           ["1A", "1B", "1C", "1D", "1E", "1F"])
-    courses["Physics 1A"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001A+++",
-                             ["2A", "2B", "2C", "2D", "2E"])
-    courses["Physics 1B"] = ("http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15W&subareasel=PHYSICS&idxcrs=0001B+++",
-                             ["1A", "1B", "1C", "1D", "1E"])
+def load_courses(courses):
+    courses.append(Course("Math 33B",
+                          "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=MATH&idxcrs=0033B+++",
+                          ["1A", "1B", "1C", "1D", "1E", "1F", "2A", "2B", "2C", "2D", "2E", "2F"]))
+    courses.append(Course("CS M51A",
+                          "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=COM+SCI&idxcrs=0051A+M+",
+                          ["1A", "1B"]))
 
-    # Set all found[course] to 0
-    for name in courses.keys():
-        found[name] = 0
-
-def add_course(courses, found):
+def add_course(courses):
     """Prompts for a course to add."""
     print "\nAdd a course"
     print "------------"
@@ -153,67 +195,62 @@ def add_course(courses, found):
             sec_list = []
         else:
             break
-
-    courses[name] = (name, sec_list)
-    found[name] = 0
+    
+    courses.append(Course(name, url, sec_list))
 
 def show_courses(courses):
     """Prints the list of courses to screen."""
     print "\n---Added courses---\n"
-    for name, data in courses.iteritems():
-        print "{0:<12}: {1}".format(name, ", ".join(data[1]))
+    for crs in courses:
+        print "{0:<12}: {1}".format(crs.name, ", ".join(crs.sections))
 
-def scan_once(courses, found, outfile):
+def scan_once(courses, outfile):
     """
-    Scans courses (a dict), where courses[string] = (url,[sections]).
-    If a course section is available, notifies the user and sets found[course]
-    to FOUND_INTERVAL.
+    Scans courses (a list of Courses) and updates each Course with a new 4-tuple,
+    after which the Course can decide whether or not to notify the user.
     """
 
     t = time.strftime("%d-%b-%y %H:%M:%S", time.localtime())
     outfile.write("\nNew scan at: {0}\n".format(t))
     outfile.write("-----------------------------------")
     
-    for name, data in courses.iteritems():
-        # Don't scan if already found
-        if found[name] > 1:
-            found[name] -= 1
-            outfile.write("\n(Skipping {0})\n".format(name))
-            continue
-
-        outfile.write("\nScanning {0}...\n".format(name))
+    for crs in courses:
+        outfile.write("\nScanning {0}...\n".format(crs.name))
         try:
-            tuples = _scan_course(name, data[0], data[1])
+            tuples = _scan_course(crs.name, crs.url, crs.sections)
         except:
             outfile.write("*****ERROR scanning course.\n")
             continue
-        
-        for i in xrange(len(data[1])):
-            # Section OR waitlist is open; note that if multiple sections are open,
-            # user_notify() is called multiple times
-            if tuples[i][0] < tuples[i][1] or tuples[i][2] < tuples[i][3]:
-                if tuples[i][0] < tuples[i][1]:
-                    msg = ("***Section {0} is open! {1} out of {2} spots taken\n"
-                           .format(data[1][i], tuples[i][0], tuples[i][1]))
-                else:
-                    msg = ("***Section {0}'s WAITLIST is open! {1} out of {2} spots taken\n"
-                           .format(data[1][i], tuples[i][2], tuples[i][3]))
-                outfile.write(msg)
-                found[name] = FOUND_INTERVAL
 
-                if user_notify(name, msg):
-                    outfile.write("+++Email sent to {0}\n".format(RECIP_ADDR))
-                else:
-                    outfile.write("*****ERROR: failed to send email to {0}\n".format(RECIP_ADDR))
-            else:
-                # Closed message is more concise
+        # Update all courses
+        open = crs.update(tuples)
+        
+        if not open:
+            for tup in tuples:
                 outfile.write("*{0}: {1}/{2}, {3}/{4}\n"
-                              .format(data[1][i], tuples[i][0], tuples[i][1], tuples[i][2], tuples[i][3]))
+                              .format(crs.name, tup[0], tup[1], tup[2], tup[3]))
+            continue
+        
+        # Don't write any closed messages if there are sections open
+        for sec, ch, en, encp in open:
+            if ch == "E":
+                msg = ("***Section {0} is open! {1} out of {2} spots taken\n"
+                       .format(sec, en, encp))
+            else:
+                msg = ("***Section {0} WAITLIST is open! {1} out of {2} spots taken\n"
+                       .format(sec, en, encp))
+            outfile.write(msg)
+            
+            if user_notify(crs.name, msg):
+                outfile.write("+++Email sent to {0}\n".format(RECIP_ADDR))
+            else:
+                outfile.write("*****ERROR: failed to send email to {0}\n".format(RECIP_ADDR))
+
 
 def _scan_course(name, url, sections):
     """
-    Scans a course with given name at the url, considering only the
-    specified sections.
+    Scans a course with given name at the url, considering only the specified sections.
+    Returns list of 4-tuples in the format: (enrolled, enroll_capacity, waitlist, waitlist_capacity).
     """
     # Open url
     url = urllib.urlopen(url)
