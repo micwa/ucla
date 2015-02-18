@@ -1,3 +1,7 @@
 *.swp
 *.log
 /_data
+
+*.pyc
+*.out
+*.exe
