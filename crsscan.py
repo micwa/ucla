@@ -183,15 +183,15 @@ def add_course(courses):
             for sec in sections:
                 sec = sec.strip()
                 if len(sec) == 1 and not sec[0].isdigit():
-                    raise ValueError("Invalid format")
-                elif len(sec) == 2 and not sec[1].isalpha():
-                    raise ValueError("Invalid format")
+                    raise ValueError()
+                elif len(sec) == 2 and (not sec[0].isdigit() or not sec[1].isalpha()):
+                    raise ValueError()
                 elif len(sec) > 2:
-                    raise ValueError("Invalid format")
+                    raise ValueError()
 
-                sec_list.append(sec)
+                sec_list.append(sec.upper())
         except ValueError:
-            print "Invalid format for sections."
+            print "***Invalid format for sections."
             sec_list = []
         else:
             break
@@ -226,9 +226,9 @@ def scan_once(courses, outfile):
         open = crs.update(tuples)
         
         if not open:
-            for tup in tuples:
+            for sec, tup in zip(crs.sections, tuples):
                 outfile.write("*{0}: {1}/{2}, {3}/{4}\n"
-                              .format(crs.name, tup[0], tup[1], tup[2], tup[3]))
+                              .format(sec, tup[0], tup[1], tup[2], tup[3]))
             continue
         
         # Don't write any closed messages if there are sections open
