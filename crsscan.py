@@ -19,9 +19,10 @@ SCAN_INTERVAL = 1    # Minutes between each scan
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
-DATA_DIR = "_data/"
-RECIP_ADDR = "crs.scan.ucla@gmail.com"      # The recipient address (for now, only one)
-SENDER_FILE = DATA_DIR + "gmail.txt"        # Contains email/password info for sender
+SENDER_FILE = "_data/gmail.txt"             # Contains email/password info for sender
+RECIP_ADDR = "crs.scan.ucla@gmail.com"      # The recipient address
+SMS_ADDR = "xxxaaa1234@txt.att.net"         # To use, change the domain to your carriers
+#xxxaaa1234@txt.att.net
 
 _email = None
 _password = None
@@ -162,6 +163,9 @@ def load_courses(courses):
     courses.append(Course("CS M51A",
                           "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=COM+SCI&idxcrs=0051A+M+",
                           ["1A", "1B"]))
+    courses.append(Course("Math 61",
+                          "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=MATH&idxcrs=0061++++",
+                          ["1A"]))
 
 def add_course(courses):
     """Prompts for a course to add."""
@@ -237,7 +241,7 @@ def scan_once(courses, outfile):
                 msg = ("***Section {0} is open! {1} out of {2} spots taken\n"
                        .format(sec, en, encp))
             else:
-                msg = ("***Section {0} WAITLIST is open! {1} out of {2} spots taken\n"
+                msg = ("***Section {0}'s WAITLIST is open! {1} out of {2} spots taken\n"
                        .format(sec, en, encp))
             outfile.write(msg)
             
@@ -308,7 +312,7 @@ def user_notify(course, msg):
     try:
         server.starttls()
         server.login(_email, _password)
-        server.sendmail(_email, [RECIP_ADDR], msg.as_string())
+        server.sendmail(_email, [RECIP_ADDR, SMS_ADDR], msg.as_string())
     except smtplib.SMTPException:
         return False
     finally:
