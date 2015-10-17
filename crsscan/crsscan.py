@@ -21,7 +21,7 @@ SMTP_PORT = 587
 
 SENDER_FILE = "_data/gmail.txt"             # Contains email/password info for sender
 RECIP_ADDR = "crs.scan.ucla@gmail.com"      # The recipient address
-SMS_ADDR = "xxxaaa1234@txt.att.net"         # To use, change the domain to your carriers
+SMS_ADDR = "4088880705@txt.att.net"         # To use, change the domain to your carriers
 #xxxaaa1234@txt.att.net
 
 _email = None
@@ -163,9 +163,9 @@ def load_courses(courses):
     courses.append(Course("CS M51A",
                           "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=COM+SCI&idxcrs=0051A+M+",
                           ["1A", "1B"]))
-    courses.append(Course("Math 61",
-                          "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=MATH&idxcrs=0061++++",
-                          ["1A"]))
+    #courses.append(Course("Math 61",
+    #                      "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=MATH&idxcrs=0061++++",
+    #                      ["1A"]))
 
 def add_course(courses):
     """Prompts for a course to add."""
