@@ -1,0 +1,22 @@
+Michael Wang
+CS 111 - Dis 1A
+
+Lab 1a
+======
+
+A few assumptions were made about parsing syntax:
+    - With defined behavior:
+        - inside a subshell command, multiple newlines are treated the same as
+          a single newline (i.e., a SEQUENCE_COMMAND)
+        - ";\n" is treated as "\n", ";)" is treated as ")"
+        - a command such as "a < b c" is parsed as "a c < b" (which is the same
+          as bash's behavior)
+        - multiple of the same redirect are overridden (e.g., "a < b < c" is
+          parsed as "a < c")
+    - With undefined behavior (per the spec):
+        - two "(" in a row, with optional whitespace in between, causes a syntax
+          error
+        - a digit-only word before/after a redirect operator is treated the
+          same as a regular word
+
+There are no limitations I'm aware of, and I haven't added any extra features.
