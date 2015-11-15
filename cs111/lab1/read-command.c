@@ -15,7 +15,7 @@
 #include <limits.h>
 
 #define DEFAULT_STACK_CAPAC 16
-#define BUF_SIZE 4
+#define BUF_SIZE 1024
 
 /* Command- and command_stream-related functions. */
 static void add_command(command_stream_t stream, command_t cmd);

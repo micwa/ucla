@@ -29,6 +29,14 @@ void vector_clear(struct vector *vec)
     vec->size = 0;
 }
 
+/* Returns the (index)th element in vec, or NULL if index is out of bounds. */
+void *vector_get(const struct vector *vec, int index)
+{
+    if (index >= vec->size || index < 0)
+        return NULL;
+    return vec->objs[index];
+}
+
 /* Returns the item at the back of the vec, or NULL if empty. */
 void *vector_back(struct vector *vec)
 {
@@ -69,4 +77,12 @@ char **vector_to_words(struct vector *vec)
     words[size] = NULL;
     
     return words;
+}
+
+/* Remove the item at the specified index in the vector. */
+void vector_remove(struct vector *vec, int index)
+{
+    for (int i = index; i < vec->size - 1; ++i)
+        vec->objs[i] = vec->objs[i + 1];
+    vec->size--;
 }
