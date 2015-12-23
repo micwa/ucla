@@ -24,3 +24,16 @@ Email:
 #Extra credit problem: none
 
 # Add any other information you'd like us to know below this line.
+
+Lab 3 Design Project: Crash Testing
+===================================
+
+Implemented ioctl() command that allows the user to set the number of writes
+to perform before the file system crashes.
+
+Files:
+    - ospfsmod.c: added implementation of ioctl() and crashing
+    - ospfs_ioctl.h: contains ioctl constants
+    - ioctl_set.c: program that sets ioctl on an ospfs file system (for convenience)
+    - ioctl_test.sh: a script that demonstrates how opsfs crashes,
+                     and verifies that it crashes as it should

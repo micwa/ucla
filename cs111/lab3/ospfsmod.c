@@ -41,6 +41,66 @@ extern uint32_t ospfs_length;
 static ospfs_super_t * const ospfs_super =
 	(ospfs_super_t *) &ospfs_data[OSPFS_BLKSIZE];
 
+/* --------- Lab 3 design ---------- */
+
+/* Functions that perform writes (only callbacks count):
+   ospfs_unlink() = 1
+   ospfs_write() = change_size(1/0) + many
+   ospfs_link() = create_blank_direntry() + 1
+   ospfs_create() = create_blank_direntry() + 1
+   ospfs_symlink() = create_blank_direntry() + 1 */
+
+#include "ospfs_ioctl.h"
+
+/* -1 (normal), 0 (crash), n (n writes until crash) */
+static int nwrites_to_crash = -1;
+
+/* Returns 1 if the file system crashed, and 0 if not. */
+static int filesystem_crashed(void)
+{
+    if (nwrites_to_crash == -1)
+    {
+#ifndef NDEBUG
+        eprintk("File system is sound\n");
+#endif
+        return 0;
+    }
+    else if (nwrites_to_crash == 0)
+    {
+#ifndef NDEBUG
+        eprintk("File system is CRASHED\n");
+#endif
+        return 1;
+    }
+    nwrites_to_crash--;
+#ifndef NDEBUG
+    eprintk("File system crashes after %d more writes\n", nwrites_to_crash);
+#endif
+    return 0;
+}
+
+int ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)
+{
+#ifndef NDEBUG
+    eprintk("Attempt to ioctl: %d\n", cmd);
+#endif
+    if (cmd == OSPFS_SET_NWRITES_TO_CRASH)
+    {
+        long n = (long) arg;
+        if (n < -1)                 /* Must be -1 or above */
+            return -EINVAL;
+        nwrites_to_crash = arg;
+#ifndef NDEBUG
+        eprintk("ioctl successful\n");
+#endif
+        return 0;
+    }
+    else
+        return -ENOTTY;
+}
+
+/* --------------------------------- */
+
 static int change_size(ospfs_inode_t *oi, uint32_t want_size);
 static ospfs_direntry_t *find_direntry(ospfs_inode_t *dir_oi, const char *name, int namelen);
 
@@ -430,6 +490,9 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	int r = 0;		/* Error return value, if any */
 	int ok_so_far = 0;	/* Return value from 'filldir' */
 
+#ifndef NDEBUG
+    eprintk("ospfs_dir_readdir() called\n");
+#endif
 	// f_pos is an offset into the directory's data, plus two.
 	// The "plus two" is to account for "." and "..".
 	if (r == 0 && f_pos == 0) {
@@ -503,9 +566,6 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 
 	// Save the file position and return!
 	filp->f_pos = f_pos;
-#ifndef NDEBUG
-    eprintk("ospfs_dir_readdir() called\n");
-#endif
 	return r;
 }
 
@@ -531,6 +591,10 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 	int entry_off;
 	ospfs_direntry_t *od;
 
+#ifndef NDEBUG
+    eprintk("unlink() called\n");
+#endif
+
 	od = NULL; // silence compiler warning; entry_off indicates when !od
 	for (entry_off = 0; entry_off < dir_oi->oi_size;
 	     entry_off += OSPFS_DIRENTRY_SIZE) {
@@ -546,6 +610,8 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 		return -ENOENT;
 	}
 
+    if (filesystem_crashed())       /* Check only if about to write */
+        return 0;
 	od->od_ino = 0;
 	oi->oi_nlink--;
 	return 0;
@@ -581,6 +647,7 @@ allocate_block(void)
 {
     uint32_t i;
     void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
+
     for (i = OSPFS_FREEMAP_BLK; i < ospfs_super->os_nblocks; ++i)
     {
         if (bitvector_test(bitmap, i))
@@ -608,6 +675,7 @@ static void
 free_block(uint32_t blockno)
 {
     void *bitmap;
+
     if (blockno <= OSPFS_FREEMAP_BLK)
         return;
 
@@ -740,7 +808,7 @@ add_block(ospfs_inode_t *oi)
 
     uint32_t dir_block;
     int32_t index = indir_index(n);
-    
+
     if (index == -1)    /* Direct block */
     {
         dir_block = allocate_block();
@@ -954,9 +1022,6 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	int r = 0;
     int retval = 0;
 
-#ifndef NDEBUG
-    eprintk("change_size() called; old_size: %d, new_size: %d\n", old_size, new_size);
-#endif
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
         retval = add_block(oi);
         if (retval != 0)
@@ -1113,6 +1178,9 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 #ifndef NDEBUG
     eprintk("write() called\n");
 #endif
+    if (filesystem_crashed())       /* Return 0 zero bytes written, which is not an error code */
+        return count;
+
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
     if (filp->f_flags & O_APPEND)
@@ -1232,6 +1300,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    entries and return one of them.
 
     uint32_t offset, ret;
+
 #ifndef NDEBUG
     eprintk("In create_blank_direntry(); dir_oi: %p\n", dir_oi);
 #endif
@@ -1290,6 +1359,7 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 #ifndef NDEBUG
     eprintk("link() called\n");
 #endif
+
     /* Check if name is too long or name already exists */
     if (dst_dentry->d_name.len > OSPFS_MAXNAMELEN)
         return -ENAMETOOLONG;
@@ -1300,6 +1370,8 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
     dir_oi = ospfs_inode(dir->i_ino);
     src_oi = ospfs_inode(src_dentry->d_inode->i_ino);
 
+    if (filesystem_crashed())       /* Check only if about to write */
+        return 0;
     link = create_blank_direntry(dir_oi);
     if (IS_ERR(link))
         return PTR_ERR(link);
@@ -1354,12 +1426,15 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 #ifndef NDEBUG
     eprintk("create() called\n");
 #endif
+
     /* Check if name is too long or name already exists */
     if (dentry->d_name.len > OSPFS_MAXNAMELEN)
         return -ENAMETOOLONG;
     if (find_direntry(ospfs_inode(dir->i_ino), dentry->d_name.name, dentry->d_name.len))
         return -EEXIST;
 
+    if (filesystem_crashed())       /* Check only if about to write */
+        return 0;
     link = create_blank_direntry(dir_oi);
     if (IS_ERR(link))
         return PTR_ERR(link);
@@ -1431,6 +1506,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 #ifndef NDEBUG
     eprintk("symlink() called\n");
 #endif
+
     /* Identical to create() */
     if (dentry->d_name.len > OSPFS_MAXNAMELEN ||
         strlen(symname) > OSPFS_MAXNAMELEN)
@@ -1438,6 +1514,8 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
     if (find_direntry(ospfs_inode(dir->i_ino), dentry->d_name.name, dentry->d_name.len))
         return -EEXIST;
 
+    if (filesystem_crashed())       /* Check only if about to write */
+        return 0;
     link = create_blank_direntry(dir_oi);
     if (IS_ERR(link))
         return PTR_ERR(link);
@@ -1518,7 +1596,8 @@ static struct inode_operations ospfs_reg_inode_ops = {
 static struct file_operations ospfs_reg_file_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= ospfs_read,
-	.write		= ospfs_write
+	.write		= ospfs_write,
+    .ioctl      = ospfs_ioctl
 };
 
 static struct inode_operations ospfs_dir_inode_ops = {
