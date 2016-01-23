@@ -2,15 +2,16 @@
 A command-line operated course scanner, configured to scan the UCLA course
 listings on www.registrar.ucla.edu.
 
-Copyright (C) 2014 by Michael Wang
+Copyright (C) 2014, 2016 by Michael Wang
 """
 
-import sys
+import getpass
 import re
-import time
-import threading
-import urllib
 import smtplib
+import sys
+import threading
+import time
+import urllib
 from email.mime.text import MIMEText
 
 SCAN_INTERVAL = 1    # Minutes between each scan
@@ -21,7 +22,7 @@ SMTP_PORT = 587
 
 SENDER_FILE = "_data/gmail.txt"             # Contains email/password info for sender
 RECIP_ADDR = "crs.scan.ucla@gmail.com"      # The recipient address
-SMS_ADDR = "4088880705@txt.att.net"         # To use, change the domain to your carriers
+SMS_ADDR = "xxxaaa1234@txt.att.net"         # To use, change the domain to your carriers
 #xxxaaa1234@txt.att.net
 
 _email = None
@@ -103,10 +104,17 @@ class Course(object):
             self._tups[sec] = tup
         return open
 
+
 def run():
     courses = []    # List of Courses
     started = False # Whether the scan has started or not
     thr = None
+
+    # If email/password is not specified, prompt for them
+    global _email, _password
+    if not _email and not _password:
+        print "Enter your email information"
+        _email, _password = prompt_for_email()
 
     # Load courses
     load_courses(courses)
@@ -156,7 +164,22 @@ def run():
         else:
             print "\nInvalid option."
 
+def prompt_for_email():
+    """Prompts for an email and a password. Returns a tuple (email, password)."""
+    print "Email (user@email.com):",
+    email = raw_input()
+    password = getpass.getpass("Password: ")
+
+    return (email, password)
+
 def load_courses(courses):
+    """
+    SPECIFY YOUR COURSES TO SCAN HERE.
+    Each course should be a Course object constructed with three arguments:
+        course name - name of the course
+        course page url - url of the course page to scan
+        section list - list of sections to watch for
+    """
     courses.append(Course("Math 33B",
                           "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel=15S&subareasel=MATH&idxcrs=0033B+++",
                           ["1A", "1B", "1C", "1D", "1E", "1F", "2A", "2B", "2C", "2D", "2E", "2F"]))
@@ -292,14 +315,6 @@ def user_notify(course, msg):
     Notifies the RECIP_ADDR about the course being opened, sending them the given message.
     Returns true if the mail was sent successfully, and false otherwise.
     """
-    global _email, _password
-
-    # Assume first line is email, second is password
-    if not _email and not _password:
-        with open(SENDER_FILE) as passfile:
-            _email = passfile.readline().strip()
-            _password = passfile.readline().strip()
-
     # Create message, then connect to SMTP server
     msg = MIMEText(msg)
     msg["From"] = _email
@@ -307,11 +322,12 @@ def user_notify(course, msg):
     msg["Subject"] = "{0} is open!".format(course)
 
     server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-    # server.set_debuglevel(True)
 
     try:
         server.starttls()
         server.login(_email, _password)
+
+        # Send to both emails at once
         server.sendmail(_email, [RECIP_ADDR, SMS_ADDR], msg.as_string())
     except smtplib.SMTPException:
         return False
