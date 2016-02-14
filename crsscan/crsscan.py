@@ -14,17 +14,14 @@ import time
 import urllib
 from email.mime.text import MIMEText
 
-SCAN_INTERVAL = 1    # Minutes between each scan
-
-# For email
-SMTP_SERVER = "smtp.gmail.com"
+# CONFIGURABLE VARIABLES
+SCAN_INTERVAL = 1               # Minutes between each scan
+SMTP_SERVER = "smtp.gmail.com"  # For email
 SMTP_PORT = 587
-
-SENDER_FILE = "_data/gmail.txt"             # Contains email/password info for sender
 RECIP_ADDR = "crs.scan.ucla@gmail.com"      # The recipient address
-SMS_ADDR = "xxxaaa1234@txt.att.net"         # To use, change the domain to your carriers
-#xxxaaa1234@txt.att.net
+SMS_ADDR = "xxxaaa1234@txt.att.net"         # To use, change the domain to your carrier's
 
+# If empty, the program will prompt you for these at startup
 _email = None
 _password = None
 
@@ -226,7 +223,7 @@ def add_course(courses):
     courses.append(Course(name, url, sec_list))
 
 def show_courses(courses):
-    """Prints the list of courses to screen."""
+    """Prints the list of courses to the screen."""
     print "\n---Added courses---\n"
     for crs in courses:
         print "{0:<12}: {1}".format(crs.name, ", ".join(crs.sections))
