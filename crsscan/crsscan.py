@@ -65,16 +65,17 @@ class Course(object):
     def update(self, tuples):
         """
         Updates this course's enrollment information. Returns a list of 4-tuples
-        (section, type, filled, capacity) for each newly opened course, where type is either
-        'E' (enroll) or 'W' (waitlist).
-        Note that while this solves the problem of double-scanning the same opened class
-        without having a scan delay (which could make you miss a notification in that time),
-        it is possible that, in a small time frame, someone enrolls in a course and another
-        person immediately drops the same course, you will not be notified of the event.
-        With the slow update time of UCLA's servers, however, this is not much of a problem.
+        (section, type, filled, capacity) for each newly opened course, where
+        type is either 'E' (enroll) or 'W' (waitlist).
+        This solves the problem of continually receiving notifications for the
+        same opened class without having a notification delay (which could make
+        you miss a notification in that time). But it is possible that, in a
+        small time frame, someone enrolls in a course and another person immediately
+        drops the same course, you will not be notified of the event. With the
+        slow update time of UCLA's servers, however, this is not much of a problem.
         
         tuples - a list of 4-tuples of the enrollment numbers of the
-                 corresponding section
+                 corresponding sections
         """
         open = []
         if not self._tups:
@@ -92,11 +93,11 @@ class Course(object):
         for sec, tup in zip(self.sections, tuples):
             prev = self._tups[sec]
             
-            # Don't do anything if enrolled hasn't changed
-            if prev[0] != tup[0] and prev[0] > tup[0]:
-                open.append((sec, 'E'))
-            if prev[2] != tup[2] and prev[2] > tup[2]:
-                open.append((sec, 'W'))
+            # Only consider just opened courses as "open"
+            if prev[0] == prev[1] and tup[0] < tup[1]:
+                open.append((sec, 'E', tup[0], tup[1]))
+            elif prev[2] == prev[3] and tup[2] < tup[3]:
+                open.append((sec, 'W', tup[2], tup[3]))
                 
             self._tups[sec] = tup
         return open
